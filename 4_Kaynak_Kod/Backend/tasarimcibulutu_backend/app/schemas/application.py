@@ -4,6 +4,7 @@ from typing import Optional
 from datetime import datetime
 from enum import Enum
 from .user import UserInResponse # user.py'den UserInResponse'u import ediyoruz
+from .project import Project as ProjectSchema # Artık ana Project şemasını kullanıyoruz
 
 # ApplicationStatus enum'ı burada tanımlanabilir
 class ApplicationStatus(str, Enum):
@@ -32,6 +33,7 @@ class Application(BaseModel):
     status: ApplicationStatus
     created_at: datetime
     freelancer: UserInResponse # Artık yanıtımızda freelancer'ın temel bilgileri de olacak
+    project: ProjectSchema # <-- Artık ProjectInApplicationResponse yerine bunu kullanıyoruz
 
     class Config:
         from_attributes = True
