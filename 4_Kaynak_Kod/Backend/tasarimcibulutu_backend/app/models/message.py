@@ -4,6 +4,7 @@ from sqlalchemy import Column, Boolean, DateTime, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
+from sqlalchemy import func # func'ı import et
 
 
 class Message(Base):
@@ -13,8 +14,9 @@ class Message(Base):
     sender_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     receiver_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     content = Column(Text, nullable=False)
-    is_read = Column(Boolean, default=False)
-    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    is_read = Column(Boolean, default=False, nullable=False)
+    # created_at sütununu veritabanı varsayılanı ile değiştiriyoruz
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     sender = relationship("User", back_populates="sent_messages", foreign_keys=[sender_id])
     receiver = relationship("User", back_populates="received_messages", foreign_keys=[receiver_id])
