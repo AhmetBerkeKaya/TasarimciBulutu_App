@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from uuid import UUID, uuid4 # uuid4'ü import et
 from typing import List
 from datetime import datetime, timezone
+from sqlalchemy import or_
 
 # app/crud/project.py
 from sqlalchemy.orm import Session, joinedload # <-- joinedload'u import et
@@ -17,10 +18,33 @@ def get_project(db: Session, project_id: UUID) -> models.Project | None:
         joinedload(models.Project.owner) # Tek bir projeyi çekerken bile sahibini getir
     ).filter(models.Project.id == str(project_id)).first()
 
-def get_projects(db: Session, skip: int = 0, limit: int = 100) -> List[models.Project]:
-    return db.query(models.Project).options(
-        joinedload(models.Project.owner) # <-- EAGER LOADING
-    ).order_by(models.Project.created_at.desc()).offset(skip).limit(limit).all()
+def get_projects(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    search: str | None = None,
+    category: str | None = None
+) -> List[models.Project]:
+    # Ana sorguyu başlat
+    query = db.query(models.Project).options(joinedload(models.Project.owner))
+
+    # Eğer arama metni varsa, başlıkta veya açıklamada ara
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                models.Project.title.ilike(search_term),
+                models.Project.description.ilike(search_term)
+            )
+        )
+
+    # Eğer kategori filtresi varsa, uygula
+    if category:
+        query = query.filter(models.Project.category == category)
+
+    # Sonuçları sırala, sayfalama yap ve döndür
+    projects = query.order_by(models.Project.created_at.desc()).offset(skip).limit(limit).all()
+    return projects
 
 def get_projects_by_user(db: Session, user_id: UUID) -> List[models.Project]:
     return db.query(models.Project).options(

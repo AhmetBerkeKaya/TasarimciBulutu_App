@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
+from typing import Optional
 
 from app import crud, schemas, database
 from app.dependencies import get_current_user
@@ -46,10 +47,18 @@ def read_my_projects(
 
 
 @router.get("/", response_model=List[schemas.Project])
-def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    projects = crud.get_projects(db=db, skip=skip, limit=limit)
+def read_projects(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db),
+    # Yeni opsiyonel filtreleme parametreleri
+    search: Optional[str] = None,
+    category: Optional[str] = None
+):
+    projects = crud.project.get_projects(
+        db=db, skip=skip, limit=limit, search=search, category=category
+    )
     return projects
-
 
 @router.get("/{project_id}", response_model=schemas.Project)
 def read_project(project_id: UUID, db: Session = Depends(get_db)):
