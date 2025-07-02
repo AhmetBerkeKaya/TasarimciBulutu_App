@@ -4,6 +4,7 @@ from typing import List, Optional
 from datetime import datetime
 from enum import Enum
 from .skill import Skill as SkillSchema # Yeni skill şemasını import et
+from .portfolio import PortfolioItem as PortfolioItemSchema
 
 # Bu enum, FastAPI'nin string'leri doğrulaması için kullanılır.
 class UserRole(str, Enum):
@@ -39,6 +40,7 @@ class User(UserBase):
     created_at: datetime # Doğru tip
     updated_at: datetime # Doğru tip
     skills: List[SkillSchema] = []
+    portfolio_items: List[PortfolioItemSchema] = [] # <-- YENİ SATIR
     # Bu ayar, SQLAlchemy modelinden Pydantic modeline otomatik dönüşüm yapılmasını sağlar.
     class Config:
         from_attributes = True

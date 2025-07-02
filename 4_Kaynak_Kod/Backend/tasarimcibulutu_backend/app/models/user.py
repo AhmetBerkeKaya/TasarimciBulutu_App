@@ -41,3 +41,4 @@ class User(Base):
         secondary=user_skill_association,
         back_populates="users"
     )
+    portfolio_items = relationship("PortfolioItem", back_populates="owner", cascade="all, delete-orphan")

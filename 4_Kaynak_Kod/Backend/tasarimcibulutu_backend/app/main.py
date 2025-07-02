@@ -1,12 +1,15 @@
 # app/main.py
 from fastapi import FastAPI
-from app.routers import user, project, application, auth, message, notification, skill_test, test_result, skill
+from app.routers import user, project, application, auth, message, notification, skill_test, test_result, skill, portfolio
+from fastapi.staticfiles import StaticFiles # Yeni import
 
 app = FastAPI(
     title="TasarimciBulutu API",
     description="CAD tasarımcıları ve firmalar için proje eşleştirme platformu.",
     version="1.0.0",
 )
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # API Router'larını uygulamaya dahil etme
 app.include_router(auth.router) # BU SATIRIN EKLENDİĞİNDEN EMİN OL
@@ -18,6 +21,7 @@ app.include_router(notification.router)
 app.include_router(skill_test.router)
 app.include_router(test_result.router)
 app.include_router(skill.router)
+app.include_router(portfolio.router) # Bu satırı ekle
 
 
 @app.get("/")
