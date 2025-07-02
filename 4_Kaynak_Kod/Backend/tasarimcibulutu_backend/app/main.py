@@ -1,6 +1,6 @@
 # app/main.py
 from fastapi import FastAPI
-from app.routers import user, project, application, auth, message, notification, skill_test, test_result
+from app.routers import user, project, application, auth, message, notification, skill_test, test_result, skill
 
 app = FastAPI(
     title="TasarimciBulutu API",
@@ -17,6 +17,7 @@ app.include_router(message.router)
 app.include_router(notification.router)
 app.include_router(skill_test.router)
 app.include_router(test_result.router)
+app.include_router(skill.router)
 
 
 @app.get("/")

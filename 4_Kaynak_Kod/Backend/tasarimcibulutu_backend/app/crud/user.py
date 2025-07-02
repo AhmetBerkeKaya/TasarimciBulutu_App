@@ -1,8 +1,10 @@
 # app/crud/user.py
+from typing import Optional
 from sqlalchemy.orm import Session
 from app import models, schemas, security 
 from passlib.context import CryptContext
 from datetime import datetime, timezone # Bu import'un olduğundan emin ol
+from sqlalchemy.dialects.postgresql import UUID
 
 # Şifreleme context'i bir kere oluşturulur
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -55,22 +57,20 @@ def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     db.refresh(db_user)
     return db_user
 
-def update_user(db: Session, user_id: str, user_update: schemas.UserUpdate) -> models.User | None:
-    db_user = get_user(db, user_id)
+def update_user(db: Session, user_id: UUID, user_update: schemas.UserUpdate) -> Optional[models.User]:
+    db_user = get_user(db, user_id=user_id)
     if not db_user:
         return None
-    
-    update_data = user_update.model_dump(exclude_unset=True)
+
+    # Gelen verileri bir sözlüğe çevir, None olanları atla
+    update_data = user_update.dict(exclude_unset=True)
+
     for key, value in update_data.items():
         setattr(db_user, key, value)
-    
-    # updated_at alanını manuel olarak güncelliyoruz
-    db_user.updated_at = datetime.now(timezone.utc)
-    
+
     db.commit()
     db.refresh(db_user)
     return db_user
-
 # ... (delete_user fonksiyonu aynı kalabilir) ...
 def delete_user(db: Session, user_id: str) -> models.User | None:
     db_user = get_user(db, user_id)

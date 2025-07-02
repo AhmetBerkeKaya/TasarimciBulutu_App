@@ -1,8 +1,9 @@
 # app/schemas/user.py
 from pydantic import BaseModel, EmailStr, UUID4
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 from enum import Enum
+from .skill import Skill as SkillSchema # Yeni skill şemasını import et
 
 # Bu enum, FastAPI'nin string'leri doğrulaması için kullanılır.
 class UserRole(str, Enum):
@@ -25,11 +26,10 @@ class UserCreate(UserBase):
 
 # Kullanıcı güncelleme şeması
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
     name: Optional[str] = None
     bio: Optional[str] = None
-    profile_picture: Optional[str] = None
     phone_number: Optional[str] = None
+    profile_picture: Optional[str] = None
 
 # API'den dönecek tam kullanıcı modeli
 class User(UserBase):
@@ -38,7 +38,7 @@ class User(UserBase):
     is_verified: bool
     created_at: datetime # Doğru tip
     updated_at: datetime # Doğru tip
-
+    skills: List[SkillSchema] = []
     # Bu ayar, SQLAlchemy modelinden Pydantic modeline otomatik dönüşüm yapılmasını sağlar.
     class Config:
         from_attributes = True
