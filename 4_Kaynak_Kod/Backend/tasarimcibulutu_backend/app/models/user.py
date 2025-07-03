@@ -22,7 +22,7 @@ class User(Base):
     role = Column(SQLAlchemyEnum(UserRole), nullable=False, default=UserRole.freelancer)
     name = Column(String, nullable=False)
     bio = Column(Text, nullable=True)
-    profile_picture = Column(String, nullable=True)
+    profile_picture_url = Column(String, nullable=True)
     is_verified = Column(Boolean, default=False, nullable=False)
     phone_number = Column(String(20), nullable=True)
     # YENİ HALLERİ

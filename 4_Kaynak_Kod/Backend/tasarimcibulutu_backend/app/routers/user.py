@@ -2,14 +2,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
-
+from fastapi import UploadFile, File
+import shutil
+import uuid
 # Gerekli tüm modülleri ve fonksiyonları import ediyoruz
 from app import schemas
 from app.crud import user as user_crud, skill as skill_crud
 # --- DOĞRU IMPORT BURASI ---
 from app.dependencies import get_db, get_current_user 
 from app.models.user import User as UserModel
-
+from app import models
 # Router'ımızı oluşturuyoruz
 router = APIRouter(
     prefix="/users",
@@ -61,3 +63,25 @@ def read_user(user_id: UUID, db: Session = Depends(get_db)):
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
+
+@router.put("/me/picture", response_model=schemas.User)
+def update_profile_picture(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # Dosya adını güvenli hale getir ve benzersiz bir isim oluştur
+    file_extension = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    unique_filename = f"profile_{current_user.id}_{uuid.uuid4()}.{file_extension}"
+    file_path = f"static/images/{unique_filename}"
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Kullanıcının profil fotoğrafı yolunu güncelle
+    current_user.profile_picture_url = file_path
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    
+    return current_user

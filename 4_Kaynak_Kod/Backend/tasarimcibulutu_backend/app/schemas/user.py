@@ -17,7 +17,7 @@ class UserBase(BaseModel):
     email: EmailStr
     name: str
     bio: Optional[str] = None
-    profile_picture: Optional[str] = None
+    profile_picture_url: Optional[str] = None # <-- Buraya ekle
     phone_number: Optional[str] = None
 
 # Kullanıcı oluşturma şeması
