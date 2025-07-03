@@ -5,6 +5,7 @@ from app import models, schemas, security
 from passlib.context import CryptContext
 from datetime import datetime, timezone # Bu import'un olduğundan emin ol
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import joinedload, subqueryload
 
 # Şifreleme context'i bir kere oluşturulur
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -16,8 +17,13 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 # ... (get_user, get_user_by_email, get_users fonksiyonları aynı kalabilir) ...
-def get_user(db: Session, user_id: str):
-    return db.query(models.User).filter(models.User.id == str(user_id)).first()
+def get_user(db: Session, user_id: UUID) -> models.User | None:
+    # options() ile ilişkili verilerin de ana sorguyla birlikte yüklenmesini sağlıyoruz
+    return db.query(models.User).options(
+        subqueryload(models.User.skills),
+        subqueryload(models.User.portfolio_items),
+        subqueryload(models.User.work_experiences)
+    ).filter(models.User.id == str(user_id)).first()
 
 def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()
@@ -36,21 +42,18 @@ def authenticate_user(db: Session, email: str, password: str) -> models.User | N
 
 # --- DEĞİŞEN FONKSİYONLAR ---
 def create_user(db: Session, user: schemas.UserCreate) -> models.User:
-    hashed_password = security.get_password_hash(user.password) # security'den çağır
-    
-    # Zaman damgalarını burada, Python içinde oluşturuyoruz
-    current_time = datetime.now(timezone.utc)
-    
+    hashed_password = security.get_password_hash(user.password)
+    current_time = datetime.now(timezone.utc) # O anın zamanını al
+
     db_user = models.User(
         email=user.email,
         password_hash=hashed_password,
         role=user.role,
         name=user.name,
-        bio=user.bio,
-        profile_picture=user.profile_picture,
-        phone_number=user.phone_number,
+
+        # --- EKSİK OLAN SATIRLARI BURAYA GERİ EKLİYORUZ ---
         created_at=current_time,
-        updated_at=current_time, # İlk oluşturmada ikisi de aynıdır
+        updated_at=current_time
     )
     db.add(db_user)
     db.commit()
