@@ -42,3 +42,4 @@ class User(Base):
         back_populates="users"
     )
     portfolio_items = relationship("PortfolioItem", back_populates="owner", cascade="all, delete-orphan")
+    work_experiences = relationship("WorkExperience", back_populates="owner", cascade="all, delete-orphan")

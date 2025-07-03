@@ -1,6 +1,6 @@
 # app/main.py
 from fastapi import FastAPI
-from app.routers import user, project, application, auth, message, notification, skill_test, test_result, skill, portfolio
+from app.routers import user, project, application, auth, message, notification, skill_test, test_result, skill, portfolio, work_experience
 from fastapi.staticfiles import StaticFiles # Yeni import
 
 app = FastAPI(
@@ -12,7 +12,7 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # API Router'larını uygulamaya dahil etme
-app.include_router(auth.router) # BU SATIRIN EKLENDİĞİNDEN EMİN OL
+app.include_router(auth.router)
 app.include_router(user.router)
 app.include_router(project.router)
 app.include_router(application.router)
@@ -21,7 +21,8 @@ app.include_router(notification.router)
 app.include_router(skill_test.router)
 app.include_router(test_result.router)
 app.include_router(skill.router)
-app.include_router(portfolio.router) # Bu satırı ekle
+app.include_router(portfolio.router)
+app.include_router(work_experience.router)
 
 
 @app.get("/")
