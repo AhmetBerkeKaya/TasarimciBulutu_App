@@ -1,24 +1,22 @@
+# app/routers/portfolio.py
 import shutil
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+import uuid
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID
-import uuid # uuid'yi de import edelim
-
-# --- DOĞRU IMPORT'LAR ---
 from app.dependencies import get_db, get_current_user
 from app.models.user import User as UserModel
 from app.models.portfolio import PortfolioItem as PortfolioItemModel
-from app.schemas.portfolio import PortfolioItem as PortfolioItemSchema
-from app.schemas.portfolio import PortfolioItemCreate
-# --- BİTTİ ---
+from app.schemas.portfolio import PortfolioItem as PortfolioItemSchema, PortfolioItemCreate
+from app.crud import portfolio as portfolio_crud
 
 router = APIRouter(
     prefix="/portfolio",
-    tags=["portfolio"]
+    tags=["Portfolio"]
 )
 
-@router.post("/users/me/items", response_model=PortfolioItemSchema, status_code=201)
+@router.post("/items", response_model=PortfolioItemSchema, status_code=status.HTTP_201_CREATED)
 def create_portfolio_item_for_current_user(
     title: str = Form(...),
     description: Optional[str] = Form(None),
@@ -26,28 +24,33 @@ def create_portfolio_item_for_current_user(
     db: Session = Depends(get_db),
     current_user: UserModel = Depends(get_current_user)
 ):
-    # Dosya adını güvenli hale getir ve benzersiz bir isim oluştur
     file_extension = file.filename.split(".")[-1] if "." in file.filename else "jpg"
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
     file_path = f"static/images/{unique_filename}"
-
+    
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
     item_data = PortfolioItemCreate(title=title, description=description)
-
-    # CRUD işlemini burada yapalım
-    db_item = PortfolioItemModel(
-        **item_data.dict(), 
-        user_id=current_user.id, 
-        image_url=file_path # Veritabanına kaydedilecek yol
+    
+    return portfolio_crud.create_portfolio_item(
+        db=db, item=item_data, user_id=current_user.id, image_url=file_path
     )
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
 
-@router.get("/users/{user_id}/items", response_model=List[PortfolioItemSchema])
-def read_user_portfolio_items(user_id: UUID, db: Session = Depends(get_db)):
-    items = db.query(PortfolioItemModel).filter(PortfolioItemModel.user_id == str(user_id)).all()
-    return items
+@router.delete("/items/{item_id}", response_model=PortfolioItemSchema)
+def delete_portfolio_item_for_current_user(
+    item_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    db_item = portfolio_crud.get_portfolio_item(db, item_id=item_id)
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Portfolio item not found")
+    if db_item.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this item")
+    
+    # TODO: Diskteki fiziksel dosyayı da silmek iyi bir pratiktir (os.remove(db_item.image_url))
+    return portfolio_crud.delete_portfolio_item(db, db_item=db_item)
+
+# Not: /users/{user_id}/items endpoint'i artık gereksiz, çünkü bu bilgiyi /users/me ile alıyoruz.
+# İstersen bu endpoint'i silebilirsin.
