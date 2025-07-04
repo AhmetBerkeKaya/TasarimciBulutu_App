@@ -15,8 +15,12 @@ class Message(Base):
     receiver_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     content = Column(Text, nullable=False)
     is_read = Column(Boolean, default=False, nullable=False)
-    # created_at sütununu veritabanı varsayılanı ile değiştiriyoruz
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # --- YENİ EKLENEN SÜTUNLAR ---
+    deleted_by_sender = Column(Boolean, default=False, nullable=False)
+    deleted_by_receiver = Column(Boolean, default=False, nullable=False)
+    # --- BİTTİ ---
 
     sender = relationship("User", back_populates="sent_messages", foreign_keys=[sender_id])
     receiver = relationship("User", back_populates="received_messages", foreign_keys=[receiver_id])

@@ -9,6 +9,7 @@ from app.crud import message as message_crud
 from app.dependencies import get_db, get_current_user
 from app.models.user import User as UserModel
 from fastapi import Response 
+from app import models
 
 router = APIRouter(
     prefix="/messages",
@@ -64,4 +65,36 @@ def mark_conversation_as_read(
     message_crud.mark_messages_as_read(
         db, sender_id=other_user_id, receiver_id=current_user.id
     )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@router.delete("/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_message_for_user(
+    message_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """Deletes a message only for the current user (soft delete)."""
+    db_message = db.query(models.Message).get(str(message_id))
+    if not db_message:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    # Kullanıcı sadece kendi gönderdiği veya aldığı mesajı silebilir
+    if db_message.sender_id != current_user.id and db_message.receiver_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this message")
+
+    message_crud.soft_delete_message(db, message=db_message, user_id=current_user.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@router.delete("/conversation/{other_user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_conversation_for_user(
+    other_user_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    success = message_crud.soft_delete_conversation(
+        db, user_id=current_user.id, other_user_id=other_user_id
+    )
+    if not success:
+        raise HTTPException(status_code=500, detail="Could not delete conversation")
+    
     return Response(status_code=status.HTTP_204_NO_CONTENT)
