@@ -6,6 +6,8 @@ from passlib.context import CryptContext
 from datetime import datetime, timezone # Bu import'un olduğundan emin ol
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import joinedload, subqueryload
+from app.models.user import User
+from app.models.skill import Skill
 
 # Şifreleme context'i bir kere oluşturulur
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -90,4 +92,11 @@ def update_user_password(db: Session, user: models.User, new_password: str):
     db.add(user)
     db.commit()
     db.refresh(user)
+    return user
+
+def remove_skill_from_user(db: Session, user: User, skill: Skill):
+    """Kullanıcının yetenek listesinden bir yeteneği kaldırır."""
+    if skill in user.skills:
+        user.skills.remove(skill)
+        db.commit()
     return user
