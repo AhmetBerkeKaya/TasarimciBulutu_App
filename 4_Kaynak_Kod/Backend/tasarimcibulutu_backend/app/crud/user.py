@@ -82,3 +82,12 @@ def delete_user(db: Session, user_id: str) -> models.User | None:
     db.delete(db_user)
     db.commit()
     return db_user
+
+def update_user_password(db: Session, user: models.User, new_password: str):
+    """Kullanıcının şifresini yeni hash ile günceller."""
+    hashed_password = security.get_password_hash(new_password)
+    user.password_hash = hashed_password
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
