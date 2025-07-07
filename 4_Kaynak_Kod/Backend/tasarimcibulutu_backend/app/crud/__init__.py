@@ -39,20 +39,8 @@ from .notification import (
     delete_notification,
 )
 
-from .skill_test import (
-    get_skill_test,
-    get_skill_tests,
-    create_skill_test,
-    update_skill_test,
-    delete_skill_test,
-)
+from .skill_test import get_skill_test, get_skill_tests, create_skill_test
 
-from .test_result import (
-    get_test_result,
-    get_test_results,
-    get_results_by_user,
-    get_results_by_test,
-    create_test_result,
-    update_test_result,
-    delete_test_result,
-)
+
+from .test_result import create_test_result, get_test_result, calculate_and_complete_test
+

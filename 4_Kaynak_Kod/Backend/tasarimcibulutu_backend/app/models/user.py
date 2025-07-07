@@ -35,7 +35,7 @@ class User(Base):
     notifications = relationship("Notification", back_populates="user")
     sent_messages = relationship("Message", back_populates="sender", foreign_keys="Message.sender_id")
     received_messages = relationship("Message", back_populates="receiver", foreign_keys="Message.receiver_id")
-    test_results = relationship("TestResult", back_populates="user")
+    test_results = relationship("TestResult", back_populates="user", cascade="all, delete-orphan")
     skills = relationship(
         "Skill",
         secondary=user_skill_association,

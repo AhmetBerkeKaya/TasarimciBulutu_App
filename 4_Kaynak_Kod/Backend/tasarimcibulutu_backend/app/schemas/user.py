@@ -3,9 +3,10 @@ from pydantic import BaseModel, EmailStr, UUID4
 from typing import List, Optional
 from datetime import datetime
 from enum import Enum
-from .skill import Skill as SkillSchema # Yeni skill şemasını import et
+from .skill import Skill as SkillSchema
 from .portfolio import PortfolioItem as PortfolioItemSchema
 from .work_experience import WorkExperience as WorkExperienceSchema
+from app.schemas.test_result import TestResult
 
 # Bu enum, FastAPI'nin string'leri doğrulaması için kullanılır.
 class UserRole(str, Enum):
@@ -43,6 +44,7 @@ class User(UserBase):
     skills: List[SkillSchema] = []
     portfolio_items: List[PortfolioItemSchema] = [] 
     work_experiences: List[WorkExperienceSchema] = [] # <-- YENİ SATIR
+    test_results: List[TestResult] = []
 
     # Bu ayar, SQLAlchemy modelinden Pydantic modeline otomatik dönüşüm yapılmasını sağlar.
     class Config:
