@@ -25,7 +25,13 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = user_crud.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
+    
+    db_user_by_phone = user_crud.get_user_by_phone_number(db, phone_number=user.phone_number)
+    if db_user_by_phone:
+        raise HTTPException(status_code=400, detail="Bu telefon numarası zaten kayıtlı.")
     return user_crud.create_user(db=db, user=user)
+
+
 
 # --- PROTECTED ENDPOINTS (Sadece giriş yapmış kullanıcıların kendileri için erişebileceği) ---
 # ÖNEMLİ: Spesifik yollar (örn: "/me") her zaman genel yollardan (örn: "/{user_id}") önce gelmelidir.

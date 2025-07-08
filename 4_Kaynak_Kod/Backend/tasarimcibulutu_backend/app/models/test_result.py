@@ -1,6 +1,6 @@
 # app/models/test_result.py
 # Mevcut importlarınıza ekleyin
-from sqlalchemy import Column, Integer, Numeric, ForeignKey, DateTime, String, Enum as SQLAlchemyEnum
+from sqlalchemy import Column, Numeric, ForeignKey, DateTime, String, Enum as SQLAlchemyEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
@@ -21,7 +21,7 @@ class TestResult(Base):
     # Şemanızdaki sütunlar
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
-    test_id = Column(Integer, ForeignKey("skill_tests.id")) # SkillTest ID'si Integer olduğu için
+    test_id = Column(UUID, ForeignKey("skill_tests.id")) # SkillTest ID'si Integer olduğu için
     score = Column(Numeric, nullable=True)
     # completed_at yerine daha genel bir durum yönetimi
     status = Column(SQLAlchemyEnum(TestStatus), default=TestStatus.IN_PROGRESS)

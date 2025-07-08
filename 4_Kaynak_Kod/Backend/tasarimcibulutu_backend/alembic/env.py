@@ -1,27 +1,31 @@
 # alembic/env.py
 
 from logging.config import fileConfig
-
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-
 from alembic import context
 
-# --- YENİ EKLENEN BÖLÜM ---
-# Modellerimizi Alembic'in görmesi için bu importları yapıyoruz
+# --- 1. EKLENECEK IMPORTLAR ---
 import os
 import sys
-from app.database import Base
-from app import models # __init__.py sayesinde tüm modelleri import eder
-
-# Projenin ana dizinini Python path'ine ekliyoruz
-sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
+# Bu satır, Alembic'in 'app' modülünü bulabilmesi için projenin ana dizinini Python path'ine ekler.
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from app.models import Base  # app/models/__init__.py dosyamızdan Base'i import ediyoruz
+from app.config import settings # Veritabanı URL'sini config dosyasından almak için
 # --- BİTTİ ---
 
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+
+# --- 2. DEĞİŞİKLİK: Veritabanı URL'sini .ini yerine config dosyamızdan alalım ---
+# Bu satırı yorum satırı yapabilir veya silebilirsiniz.
+# fileConfig(config.config_file_name)
+# Yeni satır:
+config.set_main_option('sqlalchemy.url', settings.DATABASE_URL)
+# --- BİTTİ ---
+
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -32,9 +36,8 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-# --- DEĞİŞTİRİLEN SATIR ---
-# Artık Base.metadata'yı modellerimizden alıyoruz
-target_metadata = Base.metadata
+# --- 3. DEĞİŞİKLİK: target_metadata'yı kendi modellerimize ayarlayalım ---
+target_metadata = Base.metadata # <-- BU SATIRI DEĞİŞTİRİN
 # --- BİTTİ ---
 
 # other values from the config, defined by the needs of env.py,

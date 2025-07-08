@@ -29,6 +29,10 @@ def get_user(db: Session, user_id: UUID) -> models.User | None:
         joinedload(models.User.reviews_received).joinedload(models.Review.reviewer)
     ).filter(models.User.id == str(user_id)).first()
 
+def get_user_by_phone_number(db: Session, phone_number: str) -> models.User | None:
+    """Verilen telefon numarasına sahip kullanıcıyı bulur."""
+    return db.query(models.User).filter(models.User.phone_number == phone_number).first()
+
 def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()
 
@@ -54,6 +58,7 @@ def create_user(db: Session, user: schemas.UserCreate) -> models.User:
         password_hash=hashed_password,
         role=user.role,
         name=user.name,
+        phone_number=user.phone_number,
 
         # --- EKSİK OLAN SATIRLARI BURAYA GERİ EKLİYORUZ ---
         created_at=current_time,

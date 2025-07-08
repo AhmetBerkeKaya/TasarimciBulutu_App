@@ -19,6 +19,7 @@ def get_skills(db: Session, skip: int = 0, limit: int = 100) -> List[Skill]:
 
 def create_skill(db: Session, skill: SkillCreate) -> Skill: # <-- Artık SkillCreate'i tanıyor
     db_skill = Skill(name=skill.name)
+    db_skill = Skill(name=skill.name, category=skill.category)
     db.add(db_skill)
     db.commit()
     db.refresh(db_skill)

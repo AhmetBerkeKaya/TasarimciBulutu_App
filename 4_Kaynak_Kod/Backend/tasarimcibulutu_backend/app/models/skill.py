@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
 
-# User ve Skill arasındaki ilişki için ara tablo
+# Ara tablo (user_skill_association) aynı kalıyor...
 user_skill_association = Table(
     'user_skills', Base.metadata,
     Column('user_id', UUID(as_uuid=True), ForeignKey('users.id'), primary_key=True),
@@ -17,8 +17,11 @@ class Skill(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, unique=True, index=True, nullable=False)
+    
+    # --- YENİ EKLENECEK SATIR ---
+    category = Column(String, index=True, nullable=False)
 
-    # Bir yeteneğe sahip olan kullanıcıları listelemek için ilişki
+    # İlişki (users) aynı kalıyor...
     users = relationship(
         "User",
         secondary=user_skill_association,
