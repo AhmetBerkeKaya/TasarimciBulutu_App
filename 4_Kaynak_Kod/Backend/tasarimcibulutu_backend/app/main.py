@@ -2,6 +2,10 @@
 from fastapi import FastAPI
 from app.routers import user, project, application, auth, message, notification, skill_test, skill, portfolio, work_experience, review
 from fastapi.staticfiles import StaticFiles # Yeni import
+from . import models
+from .database import engine
+
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="TasarimciBulutu API",

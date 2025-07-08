@@ -65,19 +65,26 @@ def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     return db_user
 
 def update_user(db: Session, user_id: UUID, user_update: schemas.UserUpdate) -> Optional[models.User]:
-    db_user = get_user(db, user_id=user_id)
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
     if not db_user:
         return None
 
-    # Gelen verileri bir sözlüğe çevir, None olanları atla
-    update_data = user_update.dict(exclude_unset=True)
+    # 1. Değişiklik: .dict() yerine modern .model_dump() kullanıyoruz.
+    # Bu, Pydantic V2 ile tam uyumludur ve kısmi güncellemeleri daha güvenilir yönetir.
+    update_data = user_update.model_dump(exclude_unset=True)
 
     for key, value in update_data.items():
         setattr(db_user, key, value)
+    
+    # 2. İyileştirme: Her güncellemede 'updated_at' alanını da güncelleyelim.
+    # Bu, iyi bir veritabanı yönetimi pratiğidir.
+    db_user.updated_at = datetime.now(timezone.utc)
 
+    db.add(db_user) # Değişiklikleri session'a ekle
     db.commit()
     db.refresh(db_user)
     return db_user
+
 # ... (delete_user fonksiyonu aynı kalabilir) ...
 def delete_user(db: Session, user_id: str) -> models.User | None:
     db_user = get_user(db, user_id)

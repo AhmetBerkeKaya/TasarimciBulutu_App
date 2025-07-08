@@ -1,7 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import declarative_base
-Base = declarative_base()
 
 SQLALCHEMY_DATABASE_URL = "postgresql://postgres:123@localhost:5432/tasarimcibulutu_db"  # kendi bağlantını yaz
 

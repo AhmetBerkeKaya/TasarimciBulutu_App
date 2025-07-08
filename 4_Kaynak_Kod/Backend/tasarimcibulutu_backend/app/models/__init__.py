@@ -1,3 +1,5 @@
+from app.database import Base
+
 from .user import User, UserRole
 from .message import Message
 from .project import Project, ProjectStatus
