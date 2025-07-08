@@ -26,7 +26,7 @@ def create_portfolio_item_for_current_user(
 ):
     file_extension = file.filename.split(".")[-1] if "." in file.filename else "jpg"
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
-    file_path = f"static/images/{unique_filename}"
+    file_path = f"static/portfolio_images/{unique_filename}"
     
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)

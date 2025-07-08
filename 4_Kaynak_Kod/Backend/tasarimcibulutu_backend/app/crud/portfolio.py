@@ -10,12 +10,16 @@ def get_portfolio_item(db: Session, item_id: UUID) -> PortfolioItem | None:
 # --- BİTTİ ---
 
 def create_portfolio_item(db: Session, item: PortfolioItemCreate, user_id: UUID, image_url: str) -> PortfolioItem:
-    # Pydantic v2 uyumluluğu için .model_dump() kullanıyoruz
+    # Pydantic modelindeki verileri ve ek verileri birleştirerek
+    # SQLAlchemy modelini oluşturuyoruz.
+    # --- DOĞRU KULLANIM AŞAĞIDAKİ GİBİDİR ---
     db_item = PortfolioItem(
         **item.model_dump(), 
         user_id=user_id, 
         image_url=image_url
     )
+    # --- BİTTİ ---
+    
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
