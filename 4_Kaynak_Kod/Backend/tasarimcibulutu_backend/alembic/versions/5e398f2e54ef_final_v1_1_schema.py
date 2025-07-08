@@ -1,8 +1,8 @@
-"""initial create with UUID ids
+"""Final V1.1 Schema
 
-Revision ID: 239429989df3
+Revision ID: 5e398f2e54ef
 Revises: 
-Create Date: 2025-06-28 20:35:51.813183
+Create Date: 2025-07-07 15:24:41.807259
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '239429989df3'
+revision: str = '5e398f2e54ef'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -29,6 +29,12 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('skills',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('name', sa.String(), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_skills_name'), 'skills', ['name'], unique=True)
     op.create_table('users',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('email', sa.String(), nullable=False),
@@ -36,10 +42,11 @@ def upgrade() -> None:
     sa.Column('role', sa.Enum('admin', 'freelancer', 'client', name='userrole'), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('bio', sa.Text(), nullable=True),
-    sa.Column('profile_picture', sa.String(), nullable=True),
-    sa.Column('is_verified', sa.Boolean(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('profile_picture_url', sa.String(), nullable=True),
+    sa.Column('is_verified', sa.Boolean(), nullable=False),
+    sa.Column('phone_number', sa.String(length=20), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
@@ -48,8 +55,10 @@ def upgrade() -> None:
     sa.Column('sender_id', sa.UUID(), nullable=False),
     sa.Column('receiver_id', sa.UUID(), nullable=False),
     sa.Column('content', sa.Text(), nullable=False),
-    sa.Column('is_read', sa.Boolean(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('is_read', sa.Boolean(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('deleted_by_sender', sa.Boolean(), nullable=False),
+    sa.Column('deleted_by_receiver', sa.Boolean(), nullable=False),
     sa.ForeignKeyConstraint(['receiver_id'], ['users.id'], ),
     sa.ForeignKeyConstraint(['sender_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -60,6 +69,15 @@ def upgrade() -> None:
     sa.Column('message', sa.Text(), nullable=False),
     sa.Column('is_read', sa.Boolean(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('portfolio_items',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('title', sa.String(), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('image_url', sa.String(), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -88,6 +106,24 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('user_skills',
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('skill_id', sa.UUID(), nullable=False),
+    sa.ForeignKeyConstraint(['skill_id'], ['skills.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('user_id', 'skill_id')
+    )
+    op.create_table('work_experiences',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('title', sa.String(), nullable=False),
+    sa.Column('company_name', sa.String(), nullable=False),
+    sa.Column('start_date', sa.Date(), nullable=False),
+    sa.Column('end_date', sa.Date(), nullable=True),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('applications',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('project_id', sa.UUID(), nullable=False),
@@ -95,8 +131,8 @@ def upgrade() -> None:
     sa.Column('cover_letter', sa.Text(), nullable=True),
     sa.Column('proposed_budget', sa.Numeric(), nullable=True),
     sa.Column('proposed_duration', sa.Integer(), nullable=True),
-    sa.Column('status', sa.Enum('pending', 'accepted', 'rejected', name='applicationstatus'), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('status', sa.Enum('pending', 'accepted', 'rejected', name='applicationstatus'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['freelancer_id'], ['users.id'], ),
     sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -108,11 +144,16 @@ def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_table('applications')
+    op.drop_table('work_experiences')
+    op.drop_table('user_skills')
     op.drop_table('test_results')
     op.drop_table('projects')
+    op.drop_table('portfolio_items')
     op.drop_table('notifications')
     op.drop_table('messages')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
+    op.drop_index(op.f('ix_skills_name'), table_name='skills')
+    op.drop_table('skills')
     op.drop_table('skill_tests')
     # ### end Alembic commands ###

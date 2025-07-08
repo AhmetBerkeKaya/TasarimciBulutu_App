@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from pydantic import UUID4
@@ -6,6 +6,7 @@ from app.dependencies import get_current_user
 from app.models.user import User as UserModel
 from app.models.user import UserRole
 from app import crud, schemas, database
+from uuid import UUID
 
 router = APIRouter(
     prefix="/applications",
@@ -78,3 +79,29 @@ def delete_application(application_id: UUID4, db: Session = Depends(get_db)):
     if not deleted_application:
         raise HTTPException(status_code=404, detail="Application not found")
     return deleted_application
+
+@router.put("/{application_id}/status", response_model=schemas.Application)
+def update_application_status(
+    application_id: UUID,
+    status_update: schemas.ApplicationStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """
+    Başvuru durumunu günceller (kabul et/reddet).
+    Sadece proje sahibi bu işlemi yapabilir.
+    """
+    updated_application = crud.application.update_application_status(
+        db=db,
+        application_id=application_id,
+        new_status=status_update.status,
+        current_user_id=current_user.id
+    )
+    
+    if not updated_application:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found or you don't have permission to update it"
+        )
+    
+    return updated_application

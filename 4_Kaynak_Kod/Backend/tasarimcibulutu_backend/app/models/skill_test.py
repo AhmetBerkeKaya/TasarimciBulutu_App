@@ -16,3 +16,5 @@ class SkillTest(Base):
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     test_results = relationship("TestResult", back_populates="test")
+    questions = relationship("Question", back_populates="skill_test", cascade="all, delete-orphan")
+    test_results = relationship("TestResult", back_populates="skill_test")
