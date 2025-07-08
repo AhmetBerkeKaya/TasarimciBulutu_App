@@ -22,7 +22,6 @@ class Review(Base):
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     # İlişkiler
-    project = relationship("Project")
-    reviewer = relationship("User", foreign_keys=[reviewer_id])
-    reviewee = relationship("User", foreign_keys=[reviewee_id])
     project = relationship("Project", back_populates="reviews")
+    reviewer = relationship("User", foreign_keys=[reviewer_id], back_populates="reviews_given")
+    reviewee = relationship("User", foreign_keys=[reviewee_id], back_populates="reviews_received")

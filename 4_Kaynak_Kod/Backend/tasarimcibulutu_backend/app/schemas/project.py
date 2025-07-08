@@ -1,51 +1,48 @@
 # app/schemas/project.py
 
-from pydantic import BaseModel, ConfigDict, UUID4
-from typing import Optional, List
+import uuid
+from typing import List, Optional
 from datetime import datetime
-from app.models.project import ProjectStatus
-from .user import User, UserInResponse # User ve UserInResponse'u import et
-from .review import Review
+from pydantic import BaseModel, ConfigDict
+from ..models.project import ProjectStatus
 
-# --- YENİ EKLENEN BASİT ŞEMA ---
-# Bu şema, bir projenin içinde başvuru listelerken döngüye girmeyi engeller.
-class ApplicationInProject(BaseModel):
-    id: UUID4
-    status: str # enum yerine basit string kullanabiliriz
-    freelancer: UserInResponse # Başvuranın sadece temel bilgisi
-
-    class Config:
-        from_attributes = True
-# --- BİTTİ ---
+# from .user import User, UserInResponse # <-- BU SATIRI TAMAMEN SİLİN
 
 class ProjectBase(BaseModel):
     title: str
-    description: Optional[str] = None
-    category: Optional[str] = None
-    budget_min: Optional[float] = None
-    budget_max: Optional[float] = None
+    description: str
+    category: str
+    budget_min: Optional[int] = None
+    budget_max: Optional[int] = None
     deadline: Optional[datetime] = None
 
 class ProjectCreate(ProjectBase):
     pass
 
-class ProjectUpdate(ProjectBase):
-    pass
+class ProjectUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    budget_min: Optional[int] = None
+    budget_max: Optional[int] = None
+    deadline: Optional[datetime] = None
+    status: Optional[ProjectStatus] = None
 
+class ProjectInReview(BaseModel):
+    id: uuid.UUID
+    title: str
+    
+    model_config = ConfigDict(from_attributes=True)
+    
 class Project(ProjectBase):
-    id: UUID4
-    user_id: UUID4
+    id: uuid.UUID
+    user_id: uuid.UUID
     status: ProjectStatus
     created_at: datetime
-    updated_at: Optional[datetime] = None
-    owner: User
-    
+
     # --- DEĞİŞİKLİK BURADA ---
-    # Artık tam Application listesi yerine, döngüye neden olmayan basit listeyi kullanıyoruz.
-    applications: List[ApplicationInProject] = []
-    reviews: List[Review] = []
+    # owner alanının tipini string olarak verin.
+    owner: 'UserInResponse'
 
-    class Config:
-        from_attributes = True
-
-# Dosyanın sonundaki .model_rebuild() satırlarını siliyoruz, bunu __init__.py'de yapacağız.
+    # Bu ayar, SQLAlchemy modelinden Pydantic modeline otomatik dönüşümü sağlar.
+    model_config = ConfigDict(from_attributes=True)

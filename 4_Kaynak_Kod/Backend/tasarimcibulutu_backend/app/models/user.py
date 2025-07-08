@@ -16,6 +16,7 @@ class UserRole(enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
+    # ... (id, email, password_hash gibi diğer tüm alanlar aynı kalacak)
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
@@ -25,11 +26,11 @@ class User(Base):
     profile_picture_url = Column(String, nullable=True)
     is_verified = Column(Boolean, default=False, nullable=False)
     phone_number = Column(String(20), nullable=True)
-    # YENİ HALLERİ
     created_at = Column(DateTime(timezone=True), nullable=False)
     updated_at = Column(DateTime(timezone=True), nullable=False)
 
-    # Relationships
+
+    # --- MEVCUT İLİŞKİLERİNİZ ---
     projects = relationship("Project", back_populates="owner")
     applications = relationship("Application", back_populates="freelancer")
     notifications = relationship("Notification", back_populates="user")
@@ -43,3 +44,7 @@ class User(Base):
     )
     portfolio_items = relationship("PortfolioItem", back_populates="owner", cascade="all, delete-orphan")
     work_experiences = relationship("WorkExperience", back_populates="owner", cascade="all, delete-orphan")
+
+    # --- YENİ EKLENECEK İLİŞKİLER ---
+    reviews_given = relationship("Review", foreign_keys="Review.reviewer_id", back_populates="reviewer", cascade="all, delete-orphan")
+    reviews_received = relationship("Review", foreign_keys="Review.reviewee_id", back_populates="reviewee", cascade="all, delete-orphan")
