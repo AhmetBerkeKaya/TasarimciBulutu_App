@@ -44,3 +44,5 @@ from .skill_test import get_skill_test, get_skill_tests, create_skill_test
 
 from .test_result import create_test_result, get_test_result, calculate_and_complete_test
 
+from . import review
+

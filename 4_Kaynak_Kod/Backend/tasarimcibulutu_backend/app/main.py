@@ -1,6 +1,6 @@
 # app/main.py
 from fastapi import FastAPI
-from app.routers import user, project, application, auth, message, notification, skill_test, skill, portfolio, work_experience
+from app.routers import user, project, application, auth, message, notification, skill_test, skill, portfolio, work_experience, review
 from fastapi.staticfiles import StaticFiles # Yeni import
 
 app = FastAPI(
@@ -22,7 +22,7 @@ app.include_router(skill_test.router)
 app.include_router(skill.router)
 app.include_router(portfolio.router)
 app.include_router(work_experience.router)
-
+app.include_router(review.router)
 
 @app.get("/")
 def read_root():

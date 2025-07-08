@@ -3,10 +3,9 @@ from uuid import UUID, uuid4 # uuid4'ü import et
 from typing import List
 from datetime import datetime, timezone
 from sqlalchemy import or_
-
+import uuid
 # app/crud/project.py
 from sqlalchemy.orm import Session, joinedload # <-- joinedload'u import et
-from uuid import UUID, uuid4
 from typing import List
 from datetime import datetime, timezone
 
@@ -14,9 +13,16 @@ from app import models, schemas
 from app.models.project import ProjectStatus # <-- DÜZELTİLMİŞ IMPORT
 
 def get_project(db: Session, project_id: UUID) -> models.Project | None:
+    """
+    ID'ye göre tek bir projeyi getirir.
+    İlişkili olduğu tüm verileri (sahibi, başvurular, yorumlar) tek bir sorguda çeker.
+    """
     return db.query(models.Project).options(
-        joinedload(models.Project.owner) # Tek bir projeyi çekerken bile sahibini getir
-    ).filter(models.Project.id == str(project_id)).first()
+        # joinedload kullanarak N+1 sorgu problemini önlüyoruz
+        joinedload(models.Project.owner),
+        joinedload(models.Project.applications).joinedload(models.Application.freelancer), # Başvuruları ve başvuran freelancer'ı çek
+        joinedload(models.Project.reviews).joinedload(models.Review.reviewer) # Yorumları ve yorum yapanı çek
+    ).filter(models.Project.id == project_id).first()
 
 def get_projects(
     db: Session,
@@ -44,12 +50,18 @@ def get_projects(
 
     # Sonuçları sırala, sayfalama yap ve döndür
     projects = query.order_by(models.Project.created_at.desc()).offset(skip).limit(limit).all()
+    # Her proje için status'u string olarak ayarla
+    for project in projects:
+        project.status = project.status.value if hasattr(project.status, 'value') else project.status
+    
     return projects
 
 def get_projects_by_user(db: Session, user_id: UUID) -> List[models.Project]:
-    return db.query(models.Project).options(
-        joinedload(models.Project.owner) # <-- EAGER LOADING
+    projects = db.query(models.Project).options(
+        joinedload(models.Project.owner)
     ).filter(models.Project.user_id == user_id).order_by(models.Project.created_at.desc()).all()
+    
+    return projects
 
 
 def create_project(db: Session, project: schemas.ProjectCreate, owner_id: UUID) -> models.Project:
@@ -63,7 +75,7 @@ def create_project(db: Session, project: schemas.ProjectCreate, owner_id: UUID) 
         budget_min=project.budget_min,
         budget_max=project.budget_max,
         deadline=project.deadline,
-        status=ProjectStatus.open,
+        status=models.ProjectStatus.OPEN.value,
         created_at=current_time,
         updated_at=current_time,
     )
@@ -91,3 +103,21 @@ def delete_project(db: Session, project_id: str):
     db.delete(db_project)
     db.commit()
     return db_project
+
+def complete_project(db: Session, project_id: uuid.UUID, owner_id: uuid.UUID) -> models.Project | None:
+    """
+    Bir projeyi 'completed' olarak işaretler. Sadece projenin sahibi bu işlemi yapabilir.
+    """
+    db_project = db.query(models.Project).filter(models.Project.id == project_id).first()
+    
+    if db_project and db_project.user_id == owner_id:
+        db_project.status = models.ProjectStatus.COMPLETED
+        db.commit()
+        db.refresh(db_project)
+        
+        # Status'u string olarak ayarla
+        db_project.status = db_project.status.value if hasattr(db_project.status, 'value') else db_project.status
+        
+        return db_project
+        
+    return None

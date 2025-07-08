@@ -1,25 +1,23 @@
+# alembic/env.py
+
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
-import sys
+
+# --- YENİ EKLENEN BÖLÜM ---
+# Modellerimizi Alembic'in görmesi için bu importları yapıyoruz
 import os
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-
+import sys
 from app.database import Base
+from app import models # __init__.py sayesinde tüm modelleri import eder
 
-# Modelleri import et, böylece Base.metadata modelleri bilir
-import app.models.user
-import app.models.project
-import app.models.skill_test
-import app.models.test_result
-import app.models.application
-import app.models.notification
-import app.models.message
+# Projenin ana dizinini Python path'ine ekliyoruz
+sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
+# --- BİTTİ ---
+
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -30,13 +28,14 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-
-target_metadata = Base.metadata
-
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
+# --- DEĞİŞTİRİLEN SATIR ---
+# Artık Base.metadata'yı modellerimizden alıyoruz
+target_metadata = Base.metadata
+# --- BİTTİ ---
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

@@ -1,19 +1,23 @@
-from pydantic import BaseModel, UUID4
-from typing import Optional
+# app/schemas/project.py
+
+from pydantic import BaseModel, ConfigDict, UUID4
+from typing import Optional, List
 from datetime import datetime
-from enum import Enum
+from app.models.project import ProjectStatus
+from .user import User, UserInResponse # User ve UserInResponse'u import et
+from .review import Review
 
-# user.py'den bu şemayı import ettiğimizden emin olalım
-from .user import UserInResponse
+# --- YENİ EKLENEN BASİT ŞEMA ---
+# Bu şema, bir projenin içinde başvuru listelerken döngüye girmeyi engeller.
+class ApplicationInProject(BaseModel):
+    id: UUID4
+    status: str # enum yerine basit string kullanabiliriz
+    freelancer: UserInResponse # Başvuranın sadece temel bilgisi
 
-# ProjectStatus enum'ı, projenin durumunu belirtir
-class ProjectStatus(str, Enum):
-    open = "open"
-    in_progress = "in_progress"
-    completed = "completed"
-    cancelled = "cancelled"
+    class Config:
+        from_attributes = True
+# --- BİTTİ ---
 
-# Projelerin ortak temel alanlarını tutan şema
 class ProjectBase(BaseModel):
     title: str
     description: Optional[str] = None
@@ -22,28 +26,26 @@ class ProjectBase(BaseModel):
     budget_max: Optional[float] = None
     deadline: Optional[datetime] = None
 
-# Yeni bir proje oluştururken istemciden (Flutter'dan) alınacak veriler
 class ProjectCreate(ProjectBase):
-    # Base'deki tüm alanları alır, ek olarak bir şeye gerek yok
     pass
 
-# Bir projeyi güncellerken alınacak veriler. Hepsi opsiyonel.
-class ProjectUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    category: Optional[str] = None
-    budget_min: Optional[float] = None
-    budget_max: Optional[float] = None
-    deadline: Optional[datetime] = None
-    status: Optional[ProjectStatus] = None
+class ProjectUpdate(ProjectBase):
+    pass
 
-# API'den bir proje verisi döndürülürken kullanılacak tam şema
 class Project(ProjectBase):
     id: UUID4
+    user_id: UUID4
     status: ProjectStatus
     created_at: datetime
     updated_at: Optional[datetime] = None
-    owner: UserInResponse # Proje sahibinin temel bilgilerini de içerir
+    owner: User
+    
+    # --- DEĞİŞİKLİK BURADA ---
+    # Artık tam Application listesi yerine, döngüye neden olmayan basit listeyi kullanıyoruz.
+    applications: List[ApplicationInProject] = []
+    reviews: List[Review] = []
 
     class Config:
         from_attributes = True
+
+# Dosyanın sonundaki .model_rebuild() satırlarını siliyoruz, bunu __init__.py'de yapacağız.

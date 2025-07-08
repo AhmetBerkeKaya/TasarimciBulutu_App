@@ -5,14 +5,14 @@ from sqlalchemy import Column, String, DateTime, Numeric, Enum, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
+from sqlalchemy import Enum as SQLAlchemyEnum
 
-
-class ProjectStatus(enum.Enum):
-    open = "open"
-    in_progress = "in_progress"
-    completed = "completed"
-    cancelled = "cancelled"
-
+class ProjectStatus(str, enum.Enum):
+    OPEN = "open"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+# --- KONTROL BİTTİ ---
 
 class Project(Base):
     __tablename__ = "projects"
@@ -25,9 +25,14 @@ class Project(Base):
     budget_min = Column(Numeric, nullable=True)
     budget_max = Column(Numeric, nullable=True)
     deadline = Column(DateTime(timezone=True), nullable=True)
-    status = Column(Enum(ProjectStatus), default=ProjectStatus.open)
+    status = Column(
+        SQLAlchemyEnum(ProjectStatus, name="projectstatus", native_enum=False),
+        default=ProjectStatus.OPEN.value,
+        nullable=False
+    )
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), onupdate=datetime.utcnow)
 
     owner = relationship("User", back_populates="projects")
     applications = relationship("Application", back_populates="project")
+    reviews = relationship("Review", back_populates="project")

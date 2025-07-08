@@ -24,7 +24,9 @@ def get_user(db: Session, user_id: UUID) -> models.User | None:
     return db.query(models.User).options(
         subqueryload(models.User.skills),
         subqueryload(models.User.portfolio_items),
-        subqueryload(models.User.work_experiences)
+        subqueryload(models.User.work_experiences),
+        joinedload(models.User.reviews_received).joinedload(models.Review.project),
+        joinedload(models.User.reviews_received).joinedload(models.Review.reviewer)
     ).filter(models.User.id == str(user_id)).first()
 
 def get_user_by_email(db: Session, email: str):

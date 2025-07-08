@@ -11,3 +11,4 @@ from .question import Question
 from .choice import Choice
 from .skill_test import SkillTest
 from .test_result import TestResult, TestStatus
+from .review import Review

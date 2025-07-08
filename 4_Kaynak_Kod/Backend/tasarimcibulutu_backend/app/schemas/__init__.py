@@ -1,7 +1,11 @@
 from .user import User, UserCreate, UserUpdate
 from .project import Project, ProjectBase, ProjectCreate, ProjectUpdate
-from .application import Application, ApplicationCreate, ApplicationUpdate
+from .token import Token, TokenData
+from .application import Application, ApplicationCreate, ApplicationUpdate, ApplicationStatus, ApplicationStatusUpdate
 from .message import Message, MessageCreate, MessageUpdate
 from .notification import Notification, NotificationCreate, NotificationUpdate
 from .skill_test import SkillTest, SkillTestCreate, SkillTestSimple, Question, Choice
 from .test_result import TestResult, TestResultCreate, TestSubmission, AnswerSubmit
+from .review import Review, ReviewCreate, ReviewBase
+Project.model_rebuild()
+Application.model_rebuild()
