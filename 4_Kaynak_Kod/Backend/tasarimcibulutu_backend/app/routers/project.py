@@ -41,10 +41,17 @@ def read_my_projects(
     current_user: UserModel = Depends(get_current_user)
 ):
     """
-    Retrieve projects for the current logged in user.
+    Giriş yapmış kullanıcının projelerini rolüne göre getirir.
+    - Eğer kullanıcı bir 'client' (firma) ise, kendi oluşturduğu projeleri getirir.
+    - Eğer kullanıcı bir 'freelancer' ise, başvurusunun kabul edildiği projeleri getirir.
     """
-    # crud/project.py içindeki get_projects_by_user fonksiyonunu kullanıyoruz
-    return crud.project.get_projects_by_user(db, user_id=current_user.id)
+    if current_user.role == UserRole.client:
+        return crud.project.get_projects_by_user(db, user_id=current_user.id)
+    elif current_user.role == UserRole.freelancer:
+        return crud.project.get_projects_for_freelancer(db, user_id=current_user.id)
+    else:
+        # Diğer roller (örn: admin) için boş liste dönebilir veya farklı bir mantık uygulanabilir
+        return []
 
 
 @router.get("/", response_model=List[schemas.Project])

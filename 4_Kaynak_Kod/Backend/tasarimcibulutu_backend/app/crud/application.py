@@ -95,7 +95,7 @@ def create_application(db: Session, application: schemas.ApplicationCreate, free
         cover_letter=application.cover_letter,
         proposed_budget=application.proposed_budget,
         proposed_duration=application.proposed_duration,
-        status=ApplicationStatus.PENDING,
+        status=ApplicationStatus.pending,
         created_at=datetime.now(timezone.utc) # <-- BU SATIRIN MEVCUT OLDUĞUNDAN EMİN OL
     )
     db.add(db_application)

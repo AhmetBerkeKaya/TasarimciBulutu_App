@@ -63,6 +63,18 @@ def get_projects_by_user(db: Session, user_id: UUID) -> List[models.Project]:
     
     return projects
 
+# --- YENİ EKLENECEK FONKSİYON ---
+def get_projects_for_freelancer(db: Session, user_id: UUID) -> List[models.Project]:
+    """
+    Bir freelancer'ın başvurusunun kabul edildiği tüm projeleri getirir.
+    """
+    # Application tablosu üzerinden Project tablosuna bir join işlemi yapıyoruz.
+    return db.query(models.Project).join(models.Application).filter(
+        models.Application.freelancer_id == user_id,
+        models.Application.status == 'accepted'
+    ).order_by(models.Project.updated_at.desc()).all()
+# --- BİTTİ ---
+
 
 def create_project(db: Session, project: schemas.ProjectCreate, owner_id: UUID) -> models.Project:
     # ... (bu fonksiyon aynı kalır)
