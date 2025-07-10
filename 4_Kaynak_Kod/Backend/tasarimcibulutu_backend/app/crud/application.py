@@ -21,50 +21,37 @@ def update_application_status(
 ) -> models.Application | None:
     """
     Bir başvurunun durumunu günceller.
-    Sadece proje sahibi bu işlemi yapabilir.
+    Eğer başvuru kabul edilirse, projenin durumunu 'IN_PROGRESS' yapar.
     """
-    # Başvuruyu bul
-    application = db.query(models.Application).filter(
-        models.Application.id == application_id
-    ).first()
+    # Başvuruyu ve ilişkili projeyi tek sorguda getir
+    application = db.query(models.Application).options(
+        joinedload(models.Application.project)
+    ).filter(models.Application.id == application_id).first()
     
-    if not application:
-        return None
-    
-    # Projeyi de getir
-    project = db.query(models.Project).filter(
-        models.Project.id == application.project_id
-    ).first()
-    
-    if not project:
-        return None
-    
-    # Sadece proje sahibi başvuru durumunu değiştirebilir
-    if project.user_id != current_user_id:
+    if not application or application.project.user_id != current_user_id:
         return None
     
     # Başvuru durumunu güncelle
     application.status = new_status
     
-    # *** ÖNEMLİ: Eğer başvuru KABUL edilirse proje durumunu IN_PROGRESS yap ***
-    if new_status == ApplicationStatus.accepted:
-        # DÜZELTME: Enum value'yu string olarak kaydet
-        project.status = models.ProjectStatus.IN_PROGRESS.value
+    # --- DEĞİŞİKLİK BURADA: Karşılaştırmayı .value ile yapıyoruz ---
+    if new_status.value == ApplicationStatus.accepted.value:
+        # İlgili projenin durumunu 'IN_PROGRESS' yap
+        application.project.status = ProjectStatus.IN_PROGRESS.value
         
-        # Diğer tüm bekleyen başvuruları otomatik olarak reddet
-        other_applications = db.query(models.Application).filter(
-            models.Application.project_id == application.project_id,
-            models.Application.id != application_id,
-            models.Application.status == ApplicationStatus.pending
-        ).all()
-        
-        for other_app in other_applications:
-            other_app.status = ApplicationStatus.rejected
+        # Diğer bekleyen başvuruları reddet
+        (
+            db.query(models.Application)
+            .filter(
+                models.Application.project_id == application.project_id,
+                models.Application.id != application_id,
+                models.Application.status == ApplicationStatus.pending
+            )
+            .update({"status": ApplicationStatus.rejected.value}, synchronize_session=False)
+        )
     
-    # Değişiklikleri kaydet
     db.commit()
     db.refresh(application)
-    db.refresh(project)
     
     return application
 

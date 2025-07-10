@@ -1,52 +1,45 @@
 # app/schemas/application.py
 
 from pydantic import BaseModel, UUID4, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from enum import Enum
-from .user import UserInResponse
 
-# --- YENİ EKLENEN BASİT ŞEMA ---
-# Bu şema, bir başvurunun içinde proje bilgisi gösterirken döngüye girmeyi engeller.
+# ... (ProjectInApplication ve ApplicationStatus sınıfları aynı)
 class ProjectInApplication(BaseModel):
     id: UUID4
     title: str
-    owner: UserInResponse # Proje sahibinin sadece temel bilgisi yeterli
-
-    class Config:
-        from_attributes = True
-# --- BİTTİ ---
+    owner: 'UserSummary'
+    model_config = ConfigDict(from_attributes=True)
 
 class ApplicationStatus(str, Enum):
     pending = "pending"
     accepted = "accepted"
     rejected = "rejected"
 
-class ApplicationCreate(BaseModel):
-    project_id: UUID4
+class ApplicationBase(BaseModel):
     cover_letter: Optional[str] = None
     proposed_budget: Optional[float] = None
     proposed_duration: Optional[int] = None
+    
+class ApplicationCreate(ApplicationBase):
+    project_id: UUID4
 
+# --- EKSİK OLAN VE GERİ EKLENEN SINIF ---
 class ApplicationUpdate(BaseModel):
+    # Bu şema, bir başvurunun gelecekte farklı alanlarının güncellenmesi için kullanılabilir.
+    # Şimdilik sadece status içeriyor ama yapı olarak kalması önemli.
     status: Optional[ApplicationStatus] = None
+# --- BİTTİ ---
 
 class ApplicationStatusUpdate(BaseModel):
     status: ApplicationStatus
 
-class Application(BaseModel):
+class Application(ApplicationBase):
     id: UUID4
-    project_id: UUID4
-    cover_letter: Optional[str] = None
-    proposed_budget: Optional[float] = None
-    proposed_duration: Optional[int] = None
+    freelancer: 'UserSummary'
+    project: ProjectInApplication
     status: ApplicationStatus
     created_at: datetime
-    freelancer: UserInResponse
     
-    # --- DEĞİŞİKLİK BURADA ---
-    # Artık tam Project şeması yerine, döngüye neden olmayan basit şemayı kullanıyoruz.
-    project: ProjectInApplication
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

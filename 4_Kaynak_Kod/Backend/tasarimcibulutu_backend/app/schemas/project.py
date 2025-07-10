@@ -36,13 +36,13 @@ class ProjectInReview(BaseModel):
     
 class Project(ProjectBase):
     id: uuid.UUID
-    user_id: uuid.UUID
     status: ProjectStatus
     created_at: datetime
+    owner: 'UserSummary' # <-- Bu zaten doğru şekilde forward reference
 
-    # --- DEĞİŞİKLİK BURADA ---
-    # owner alanının tipini string olarak verin.
-    owner: 'UserInResponse'
+    # --- EN KRİTİK DEĞİŞİKLİK BURADA ---
+    # Application şemasını doğrudan import etmek yerine, adını string olarak yazıyoruz.
+    applications: List['Application'] = []
+    # --- BİTTİ ---
 
-    # Bu ayar, SQLAlchemy modelinden Pydantic modeline otomatik dönüşümü sağlar.
     model_config = ConfigDict(from_attributes=True)
