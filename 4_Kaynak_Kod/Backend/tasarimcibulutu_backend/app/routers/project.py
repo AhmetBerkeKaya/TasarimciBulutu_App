@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID
-
 from app import crud, schemas
 from app.dependencies import get_db, get_current_user
 from app.models.user import User as UserModel, UserRole
@@ -28,8 +27,31 @@ def read_my_projects(db: Session = Depends(get_db), current_user: UserModel = De
     return []
 
 @router.get("/", response_model=List[schemas.Project])
-def read_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), search: Optional[str] = None, category: Optional[str] = None):
-    return crud.project.get_projects(db=db, skip=skip, limit=limit, search=search, category=category)
+def read_projects(
+    db: Session = Depends(get_db),
+    skip: int = 0, 
+    limit: int = 100, 
+    search: Optional[str] = None,
+    category: Optional[str] = None,
+    # --- YENİ PARAMETRELER ---
+    min_budget: Optional[float] = None,
+    max_budget: Optional[float] = None,
+    sort_by: Optional[str] = None  # Örn: 'newest', 'budget_high', 'budget_low'
+    # --- BİTTİ ---
+):
+    projects = crud.project.get_projects(
+        db=db, 
+        skip=skip, 
+        limit=limit, 
+        search=search, 
+        category=category,
+        # --- YENİ PARAMETRELERİ CRUD FONKSİYONUNA GÖNDER ---
+        min_budget=min_budget,
+        max_budget=max_budget,
+        sort_by=sort_by
+    )
+    return projects
+
 
 @router.get("/{project_id}", response_model=schemas.Project)
 def read_project(project_id: UUID, db: Session = Depends(get_db)):

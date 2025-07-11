@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session, joinedload
 from uuid import UUID
 from typing import List
 from datetime import datetime, timezone
+from sqlalchemy import desc, asc
 
 from app import models, schemas
 from app.models.project import ProjectStatus
@@ -15,14 +16,46 @@ def get_project(db: Session, project_id: UUID) -> models.Project | None:
         joinedload(models.Project.reviews).joinedload(models.Review.reviewer)
     ).filter(models.Project.id == project_id).first()
 
-def get_projects(db: Session, skip: int = 0, limit: int = 100, search: str | None = None, category: str | None = None) -> List[models.Project]:
+def get_projects(
+    db: Session, 
+    skip: int = 0, 
+    limit: int = 100, 
+    search: str | None = None, 
+    category: str | None = None,
+    # --- YENİ PARAMETRELER ---
+    min_budget: float | None = None,
+    max_budget: float | None = None,
+    sort_by: str | None = None
+) -> List[models.Project]:
+    
     query = db.query(models.Project).options(joinedload(models.Project.owner))
     query = query.filter(models.Project.status == ProjectStatus.OPEN.value)
+
     if search:
         query = query.filter(models.Project.title.ilike(f"%{search}%"))
     if category:
         query = query.filter(models.Project.category == category)
-    return query.order_by(models.Project.created_at.desc()).offset(skip).limit(limit).all()
+    
+    # --- YENİ FİLTRELEME MANTIĞI ---
+    if min_budget is not None:
+        # Bütçesi belirtilen minimum değerden büyük veya eşit olanları filtrele
+        query = query.filter(models.Project.budget_min >= min_budget)
+    if max_budget is not None:
+        # Bütçesi belirtilen maksimum değerden küçük veya eşit olanları filtrele
+        query = query.filter(models.Project.budget_max <= max_budget)
+    
+    # --- YENİ SIRALAMA MANTIĞI ---
+    if sort_by == 'budget_high':
+        # En yüksek bütçeye göre sırala (azalan)
+        query = query.order_by(desc(models.Project.budget_max))
+    elif sort_by == 'budget_low':
+        # En düşük bütçeye göre sırala (artan)
+        query = query.order_by(asc(models.Project.budget_min))
+    else:
+        # Varsayılan olarak en yeniye göre sırala
+        query = query.order_by(desc(models.Project.created_at))
+        
+    return query.offset(skip).limit(limit).all()
 
 def get_projects_by_user(db: Session, user_id: UUID) -> List[models.Project]:
     return db.query(models.Project).options(
