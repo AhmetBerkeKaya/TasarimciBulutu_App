@@ -1,83 +1,116 @@
-// lib/features/projects/screens/project_list_screen.dart
-import 'package:deneme2/features/project/screens/project_detail_screen.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../common_widgets/empty_state.dart';
-import '../../../common_widgets/loading_indicator.dart';
-import '../../../core/providers/auth_provider.dart';
+import '../../../common_widgets/project_card_skeleton.dart';
 import '../../../core/providers/project_provider.dart';
-import '../../../data/models/enums.dart';
+import '../widgets/filter_sheet.dart';
 import '../widgets/project_card.dart';
-import 'create_project_screen.dart';
+import 'project_detail_screen.dart';
 
-class ProjectListScreen extends StatelessWidget {
+class ProjectListScreen extends StatefulWidget {
   const ProjectListScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Build metodu içinde provider'ı çağırıyoruz. `listen: false` değil!
-    final userRole = Provider.of<AuthProvider>(context).user?.role;
-    final bool isClient = userRole == UserRole.client;
+  State<ProjectListScreen> createState() => _ProjectListScreenState();
+}
 
+class _ProjectListScreenState extends State<ProjectListScreen> {
+  final _searchController = TextEditingController();
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      context.read<ProjectProvider>().fetchOpenProjects();
+    });
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      context.read<ProjectProvider>().applyFiltersAndFetch(searchQuery: _searchController.text);
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(isClient ? 'Projelerim' : 'Aktif Projeler'),
+        title: const Text('Proje İlanları'),
         actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.search), tooltip: 'Ara'),
-          IconButton(onPressed: () {}, icon: const Icon(Icons.filter_list), tooltip: 'Filtrele'),
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            tooltip: 'Filtrele',
+            onPressed: () => showModalBottomSheet(
+              context: context,
+              builder: (context) => FilterSheet(currentSearchQuery: _searchController.text),
+              isScrollControlled: true,
+            ),
+          ),
         ],
       ),
-      body: Consumer<ProjectProvider>(
-        builder: (context, projectProvider, child) {
-          if (projectProvider.isLoading) {
-            return const LoadingIndicator();
-          }
-
-          if (projectProvider.errorMessage != null) {
-            return Center(child: Text(projectProvider.errorMessage!));
-          }
-
-          if (projectProvider.projects.isEmpty) {
-            return const EmptyState(
-              icon: Icons.search_off,
-              message: 'Gösterilecek Proje Bulunamadı',
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: () => projectProvider.fetchProjects(),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: projectProvider.projects.length,
-              itemBuilder: (context, index) {
-                final project = projectProvider.projects[index];
-                return ProjectCard(
-                  project: project,
-                  onTap: () {
-                    Navigator.of(context).push(MaterialPageRoute(
-                      builder: (context) => ProjectDetailScreen(project: project),
-                    ));
-                  },
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                hintText: 'Proje başlığı veya açıklaması ara...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Consumer<ProjectProvider>(
+              builder: (context, projectProvider, child) {
+                if (projectProvider.isLoading && projectProvider.allOpenProjects.isEmpty) {
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: 5,
+                    itemBuilder: (context, index) => const ProjectCardSkeleton(),
+                  );
+                }
+                if (projectProvider.allOpenProjects.isEmpty) {
+                  return const EmptyState(
+                    icon: Icons.search_off,
+                    message: 'Aktif proje ilanı bulunamadı.',
+                  );
+                }
+                return RefreshIndicator(
+                  onRefresh: () => projectProvider.fetchOpenProjects(),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: projectProvider.allOpenProjects.length,
+                    itemBuilder: (context, index) {
+                      final project = projectProvider.allOpenProjects[index];
+                      return ProjectCard(
+                        project: project,
+                        onTap: () {
+                          Navigator.of(context).push(MaterialPageRoute(
+                            builder: (context) => ProjectDetailScreen(project: project),
+                          ));
+                        },
+                      );
+                    },
+                  ),
                 );
               },
             ),
-          );
-        },
+          ),
+        ],
       ),
-      floatingActionButton: isClient
-          ? FloatingActionButton.extended(
-        onPressed: () async {
-          // Proje oluşturma ekranına git ve geri dönüldüğünde listeyi yenile
-          await Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const CreateProjectScreen()),
-          );
-          // Proje eklendikten sonra liste yenilenir
-          Provider.of<ProjectProvider>(context, listen: false).fetchProjects();
-        },
-        label: const Text('Proje Yayınla'),
-        icon: const Icon(Icons.add),
-      )
-          : null,
     );
   }
 }

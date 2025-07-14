@@ -1,9 +1,9 @@
-// lib/core/theme/app_theme.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Renkler (PDF'e göre)
+  // 1. RENK PALETLERİ
+  //============================================================================
   // Açık Tema Renkleri
   static const Color lightBackground = Color(0xFFF8FAFC);
   static const Color lightCard = Color(0xFFFFFFFF);
@@ -11,106 +11,37 @@ class AppTheme {
   static const Color lightSecondary = Color(0xFF94A3B8);
   static const Color lightText = Color(0xFF1E293B);
   static const Color lightError = Color(0xFFDC2626);
+  static const Color lightLogoBackground = Color(0xFFE3F2FD); // Açık primarinin daha açık bir tonu
 
   // Koyu Tema Renkleri
-  static const Color darkBackground = Color(0xFF1f2d50);
+  static const Color darkBackground = Color(0xFF1F2D50);
   static const Color darkCard = Color(0xFF1E293B);
   static const Color darkPrimary = Color(0xFF3B82F6);
   static const Color darkSecondary = Color(0xFF64748B);
   static const Color darkText = Color(0xFFF1F5F9);
   static const Color darkError = Color(0xFFEF4444);
+  static const Color darkLogoBackground = Colors.white12; // Hafif şeffaf beyaz
 
-  // Text Tema Fonksiyonu
-  static TextTheme _textTheme(Color textColor) {
-    return GoogleFonts.manropeTextTheme(
-      TextTheme(
-        displayLarge: TextStyle(color: textColor, fontWeight: FontWeight.bold),
-        displayMedium: TextStyle(color: textColor, fontWeight: FontWeight.bold),
-        displaySmall: TextStyle(color: textColor, fontWeight: FontWeight.bold),
-        headlineMedium: TextStyle(color: textColor, fontWeight: FontWeight.bold),
-        headlineSmall: TextStyle(color: textColor, fontWeight: FontWeight.w600),
-        titleLarge: TextStyle(color: textColor, fontWeight: FontWeight.w600),
-        titleMedium: TextStyle(color: textColor, fontWeight: FontWeight.w500),
-        titleSmall: TextStyle(color: textColor, fontWeight: FontWeight.w500),
-        bodyLarge: TextStyle(color: textColor, height: 1.5),
-        bodyMedium: TextStyle(color: textColor, height: 1.5),
-        labelLarge: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.2), // Buton metni
-      ),
-    );
-  }
 
-  // Ortak Stiller
-  static final _cardTheme = CardThemeData(
-    elevation: 0,
-    margin: EdgeInsets.zero,
-    shape: RoundedRectangleBorder(
-      borderRadius: const BorderRadius.all(Radius.circular(12)),
-      side: BorderSide(color: Colors.grey.withOpacity(0.2), width: 1),
-    ),
+  static const LinearGradient lightPrimaryGradient = LinearGradient(
+    colors: [Color(0xFF4B89FF), Color(0xFF2563EB)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
   );
 
-  static final _inputDecorationTheme = InputDecorationTheme(
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: Colors.grey.withOpacity(0.4)),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: Colors.grey.withOpacity(0.4)),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: const BorderSide(color: lightPrimary, width: 2),
-    ),
+  static const LinearGradient darkPrimaryGradient = LinearGradient(
+    colors: [Color(0xFFFFFFFF), Color(0xFF3B82F6)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
   );
 
-  // Açık Tema
-  static final ThemeData lightTheme = ThemeData(
-    brightness: Brightness.light,
-    primaryColor: lightPrimary,
-    scaffoldBackgroundColor: lightBackground,
-    textTheme: _textTheme(lightText),
-    colorScheme: const ColorScheme.light(
-      primary: lightPrimary,
-      secondary: lightSecondary,
-      surface: lightCard,
-      background: lightBackground,
-      error: lightError,
-      onPrimary: Colors.white,
-      onSecondary: lightText,
-      onSurface: lightText,
-      onBackground: lightText,
-      onError: Colors.white,
-    ),
-    cardTheme: _cardTheme.copyWith(color: lightCard, surfaceTintColor: Colors.white),
-    appBarTheme: AppBarTheme(
-      backgroundColor: lightBackground,
-      elevation: 0,
-      scrolledUnderElevation: 0.5,
-      shadowColor: Colors.grey.withOpacity(0.5),
-      iconTheme: const IconThemeData(color: lightText),
-      titleTextStyle: _textTheme(lightText).headlineSmall,
-    ),
-    inputDecorationTheme: _inputDecorationTheme,
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: lightPrimary,
-        foregroundColor: Colors.white,
-        textStyle: _textTheme(Colors.white).labelLarge,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
-        elevation: 1,
-      ),
-    ),
-  );
-
-  // Koyu Tema
-  static final ThemeData darkTheme = ThemeData(
-    brightness: Brightness.dark,
-    primaryColor: darkPrimary,
-    scaffoldBackgroundColor: darkBackground,
-    textTheme: _textTheme(darkText),
-    colorScheme: const ColorScheme.dark(
+  // 2. TEMA OLUŞTURUCU FONKSİYON
+  //============================================================================
+  // Bu merkezi fonksiyon, bir renk şeması alıp tam bir tema döndürür.
+  static ThemeData _buildTheme({required bool isDarkMode}) {
+    // Önce temaya özel renkleri belirliyoruz
+    final colorScheme = isDarkMode
+        ? const ColorScheme.dark(
       primary: darkPrimary,
       secondary: darkSecondary,
       surface: darkCard,
@@ -121,31 +52,108 @@ class AppTheme {
       onSurface: darkText,
       onBackground: darkText,
       onError: Colors.white,
-    ),
-    cardTheme: _cardTheme.copyWith(color: darkCard),
-    appBarTheme: AppBarTheme(
-      backgroundColor: darkBackground,
-      elevation: 0,
-      scrolledUnderElevation: 0.5,
-      shadowColor: Colors.black.withOpacity(0.5),
-      iconTheme: const IconThemeData(color: darkText),
-      titleTextStyle: _textTheme(darkText).headlineSmall,
-    ),
-    inputDecorationTheme: _inputDecorationTheme.copyWith(
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: darkPrimary, width: 2),
+    )
+        : const ColorScheme.light(
+      primary: lightPrimary,
+      secondary: lightSecondary,
+      surface: lightCard,
+      background: lightBackground,
+      error: lightError,
+      onPrimary: Colors.white,
+      onSecondary: lightText,
+      onSurface: lightText,
+      onBackground: lightText,
+      onError: Colors.white,
+    );
+
+    // Sonra bu renkleri kullanarak tam temayı oluşturuyoruz
+    return ThemeData(
+      brightness: isDarkMode ? Brightness.dark : Brightness.light,
+      primaryColor: colorScheme.primary,
+      scaffoldBackgroundColor: colorScheme.background,
+      cardColor: colorScheme.surface,
+
+      // Yazı tiplerini ve renklerini doğrudan renk şemasına göre ayarla
+      textTheme: GoogleFonts.manropeTextTheme(ThemeData(brightness: colorScheme.brightness).textTheme).apply(
+        bodyColor: colorScheme.onBackground,
+        displayColor: colorScheme.onBackground,
       ),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: darkPrimary,
-        foregroundColor: Colors.white,
-        textStyle: _textTheme(Colors.white).labelLarge,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
+
+      // AppBar teması
+      appBarTheme: AppBarTheme(
+        elevation: 0,
+        backgroundColor: colorScheme.background,
+        iconTheme: IconThemeData(color: colorScheme.onBackground),
+        titleTextStyle: GoogleFonts.manrope(
+          color: colorScheme.onBackground,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+
+      // Card teması
+      cardTheme: CardThemeData(
         elevation: 1,
+        color: colorScheme.surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
       ),
-    ),
-  );
+
+      // Buton teması
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: colorScheme.primary,
+          foregroundColor: colorScheme.onPrimary,
+          elevation: 1,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          textStyle: GoogleFonts.manrope(fontWeight: FontWeight.bold, letterSpacing: 1.2),
+        ),
+      ),
+
+      // Input teması
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: isDarkMode ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.0),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.0),
+          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+        ),
+      ),
+
+      // Chip teması
+      chipTheme: ChipThemeData(
+        backgroundColor: colorScheme.primary.withOpacity(0.15),
+        labelStyle: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        side: BorderSide.none,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20.0),
+        ),
+      ),
+
+      // Alt Navigasyon Barı teması
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: colorScheme.surface,
+        selectedItemColor: colorScheme.primary,
+        unselectedItemColor: colorScheme.secondary,
+        elevation: 5,
+      ),
+    );
+  }
+
+  // 3. SONUÇ TEMALARI
+  //============================================================================
+  // Merkezi fonksiyonumuzu çağırarak açık ve koyu temaları oluşturuyoruz
+  static final ThemeData lightTheme = _buildTheme(isDarkMode: false);
+  static final ThemeData darkTheme = _buildTheme(isDarkMode: true);
 }

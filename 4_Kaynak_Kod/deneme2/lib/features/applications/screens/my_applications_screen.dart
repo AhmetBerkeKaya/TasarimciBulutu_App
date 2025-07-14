@@ -1,13 +1,11 @@
 // lib/features/applications/screens/my_applications_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../../../common_widgets/empty_state.dart';
 import '../../../common_widgets/loading_indicator.dart';
 import '../../../core/providers/application_provider.dart';
-import '../../../core/providers/auth_provider.dart';
-import '../../../core/services/api_service.dart';
-import '../../../data/models/application_model.dart';
+import '../../../data/models/enums.dart';
+import '../../messages/screens/chat_screen.dart';
 import '../widgets/application_card.dart';
 
 class MyApplicationsScreen extends StatefulWidget {
@@ -18,20 +16,15 @@ class MyApplicationsScreen extends StatefulWidget {
 }
 
 class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
-  late Future<List<Application>> _applicationsFuture;
-  final ApiService _apiService = ApiService();
-
   @override
   void initState() {
     super.initState();
-    // initState içinde Provider'dan token alıp Future'ı başlatıyoruz.
-    final token = Provider.of<AuthProvider>(context, listen: false).token;
-    if (token != null) {
-      _applicationsFuture = _apiService.getMyApplications(token: token);
-    } else {
-      // Token yoksa, boş bir Future ata
-      _applicationsFuture = Future.value([]);
-    }
+    // Ekran açıldığında verilerin güncel olduğundan emin olmak için
+    // Provider'ı tetikleyebiliriz. Provider zaten token varsa kendi yüklüyor
+    // ama yine de güvence olarak eklenebilir.
+    Future.microtask(() {
+      Provider.of<ApplicationProvider>(context, listen: false).fetchMyApplications();
+    });
   }
 
   @override
@@ -42,14 +35,17 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
       ),
       body: Consumer<ApplicationProvider>(
         builder: (context, appProvider, child) {
-          if (appProvider.isLoading) {
+          // Önce yüklenme durumunu kontrol et
+          if (appProvider.isLoading && appProvider.myApplications.isEmpty) {
             return const LoadingIndicator();
           }
 
+          // Sonra hata durumunu kontrol et
           if (appProvider.errorMessage != null) {
             return Center(child: Text(appProvider.errorMessage!));
           }
 
+          // Sonra listenin boş olup olmadığını kontrol et
           if (appProvider.myApplications.isEmpty) {
             return const EmptyState(
               icon: Icons.file_copy_outlined,
@@ -58,6 +54,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
             );
           }
 
+          // Her şey yolundaysa listeyi göster
           return RefreshIndicator(
             onRefresh: () => appProvider.fetchMyApplications(),
             child: ListView.builder(
@@ -65,11 +62,22 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
               itemCount: appProvider.myApplications.length,
               itemBuilder: (context, index) {
                 final app = appProvider.myApplications[index];
+                final bool isAccepted = app.status == ApplicationStatus.accepted;
+
                 return ApplicationCard(
-                  projectTitle: 'Proje Başlığı #${app.projectId.substring(0, 8)}',
-                  companyName: 'Bir Firma',
+                  projectTitle: app.project.title,
+                  companyName: app.project.owner.name,
                   status: app.status,
                   appliedDate: app.createdAt,
+                  onTap: isAccepted
+                      ? () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => ChatScreen(otherUser: app.project.owner),
+                      ),
+                    );
+                  }
+                      : null,
                 );
               },
             ),

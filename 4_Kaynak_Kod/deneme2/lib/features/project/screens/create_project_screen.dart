@@ -62,17 +62,19 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
     }
   }
 
-  // ... (_selectDate fonksiyonu aynı kalır) ...
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDeadline ?? DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime(2030),
+      // Tarih seçiciyi de Türkçeleştirebiliriz
+      locale: const Locale('tr', 'TR'),
     );
     if (picked != null && picked != _selectedDeadline) {
       setState(() {
         _selectedDeadline = picked;
+        // 'tr_TR' parametresinin burada olması kritik
         _deadlineController.text = DateFormat('dd MMMM yyyy', 'tr_TR').format(picked);
       });
     }

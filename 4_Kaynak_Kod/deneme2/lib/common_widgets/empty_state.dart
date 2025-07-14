@@ -5,12 +5,15 @@ class EmptyState extends StatelessWidget {
   final IconData icon;
   final String message;
   final String? suggestion;
+  final Widget? actionButton; // <-- YENİ
 
   const EmptyState({
     super.key,
     required this.icon,
     required this.message,
     this.suggestion,
+    this.actionButton, // <-- YENİ
+
   });
 
   @override
@@ -39,6 +42,10 @@ class EmptyState extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
+            ],
+            if (actionButton != null) ...[
+              const SizedBox(height: 24),
+              actionButton!,
             ]
           ],
         ),

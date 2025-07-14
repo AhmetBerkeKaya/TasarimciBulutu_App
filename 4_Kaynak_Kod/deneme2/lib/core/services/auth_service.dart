@@ -1,7 +1,10 @@
 // lib/core/services/auth_service.dart
+
 import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+
 import '../../data/models/enums.dart';
 import '../../data/models/user_model.dart';
 
@@ -17,6 +20,7 @@ class AuthService {
     required String email,
     required String password,
     required UserRole role,
+    required String phoneNumber, // <-- YENİ PARAMETRE
   }) async {
     final url = Uri.parse('$_baseUrl/users/');
     try {
@@ -27,7 +31,8 @@ class AuthService {
           'email': email,
           'name': name,
           'password': password,
-          'role': role.name, // Enum'ı string'e çeviriyoruz
+          'role': role.name,
+          'phone_number': phoneNumber, // <-- YENİ PARAMETRE
         }),
       );
 

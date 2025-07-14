@@ -1,18 +1,15 @@
-// lib/features/projects/widgets/application_dialog.dart
+// lib/features/project/widgets/application_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../../../core/providers/application_provider.dart';
-import '../../../core/services/api_service.dart';
 
 class ApplicationDialog extends StatefulWidget {
   final String projectId;
-  final String token;
 
+  // DEĞİŞİKLİK: Artık token'a ihtiyacımız yok
   const ApplicationDialog({
     super.key,
     required this.projectId,
-    required this.token,
   });
 
   @override
@@ -23,25 +20,21 @@ class _ApplicationDialogState extends State<ApplicationDialog> {
   final _formKey = GlobalKey<FormState>();
   final _coverLetterController = TextEditingController();
   final _budgetController = TextEditingController();
-  bool _isLoading = false;
-  final ApiService _apiService = ApiService();
+
+  // DEĞİŞİKLİK: _isLoading durumunu provider'dan dinleyeceğiz
+  // bool _isLoading = false;
 
   Future<void> _submitApplication() async {
     if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-
-      final success = await _apiService.applyToProject(
+      // DEĞİŞİKLİK: ApiService yerine Provider'ı çağırıyoruz
+      final success = await Provider.of<ApplicationProvider>(context, listen: false).applyToProject(
         projectId: widget.projectId,
         coverLetter: _coverLetterController.text,
         proposedBudget: double.tryParse(_budgetController.text),
-        token: widget.token,
       );
 
       if (!mounted) return;
-      if (success) {
-        // Başarılı olursa, ApplicationProvider'a listeyi yenilemesini söyle
-        Provider.of<ApplicationProvider>(context, listen: false).fetchMyApplications();
-      }
+
       Navigator.of(context).pop(); // Diyalog penceresini kapat
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -61,6 +54,9 @@ class _ApplicationDialogState extends State<ApplicationDialog> {
 
   @override
   Widget build(BuildContext context) {
+    // isLoading durumunu provider'dan alıyoruz
+    final isLoading = context.watch<ApplicationProvider>().isLoading;
+
     return AlertDialog(
       title: const Text('Projeye Başvur'),
       content: Form(
@@ -98,8 +94,10 @@ class _ApplicationDialogState extends State<ApplicationDialog> {
           child: const Text('İptal'),
         ),
         ElevatedButton(
-          onPressed: _isLoading ? null : _submitApplication,
-          child: _isLoading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Başvuruyu Gönder'),
+          onPressed: isLoading ? null : _submitApplication,
+          child: isLoading
+              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Başvuruyu Gönder'),
         ),
       ],
     );

@@ -1,7 +1,12 @@
 // lib/features/auth/screens/signup_screen.dart
+
 import 'package:flutter/material.dart';
-import '../../../core/services/auth_service.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
+import 'package:provider/provider.dart';
+
+import '../../../core/providers/auth_provider.dart';
 import '../../../data/models/enums.dart';
+import '../widgets/user_type_selector.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -12,31 +17,52 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
   UserRole _selectedRole = UserRole.freelancer;
-  bool _isLoading = false;
 
-  final AuthService _authService = AuthService();
+  final _nameController = TextEditingController();
+  final _surnameController = TextEditingController();
+  final _companyNameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  String _fullPhoneNumber = '';
+
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
 
   Future<void> _signup() async {
     if (_formKey.currentState?.validate() ?? false) {
-      setState(() => _isLoading = true);
+      if (_fullPhoneNumber.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lütfen geçerli bir telefon numarası girin.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
 
-      final user = await _authService.signup(
-        name: _nameController.text,
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      // Role göre doğru ismi alıyoruz.
+      final String nameForApi = _selectedRole == UserRole.freelancer
+          ? '${_nameController.text} ${_surnameController.text}'
+          : _companyNameController.text;
+
+      final success = await authProvider.signup(
+        name: nameForApi,
         email: _emailController.text,
+        phoneNumber: _fullPhoneNumber, // Widget'tan gelen tam numarayı kullan
         password: _passwordController.text,
         role: _selectedRole,
       );
 
-      setState(() => _isLoading = false);
-
-      if (user != null && mounted) {
+      if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${user.name}, kaydınız başarıyla oluşturuldu!'),
+          const SnackBar(
+            content: Text('Kayıt başarılı! Lütfen giriş yapın.'),
             backgroundColor: Colors.green,
           ),
         );
@@ -55,71 +81,182 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _surnameController.dispose();
+    _companyNameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose(); // <-- dispose etmeyi unutma
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // ... (build metodunun geri kalanı aynı, sadece TextFormField'lara controller ekleyeceğiz)
     final theme = Theme.of(context);
+    final authProvider = Provider.of<AuthProvider>(context);
+    final bool isFreelancer = _selectedRole == UserRole.freelancer;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Hesap Oluştur')),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 450),
-            child: Form(
-              key: _formKey,
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text('Birkaç adımda aramıza katılın', style: theme.textTheme.headlineSmall, textAlign: TextAlign.center,),
-                      const SizedBox(height: 24),
-                      SegmentedButton<UserRole>(
-                        segments: const [
-                          ButtonSegment<UserRole>(value: UserRole.freelancer, label: Text('Freelancer'), icon: Icon(Icons.person_outline)),
-                          ButtonSegment<UserRole>(value: UserRole.client, label: Text('Firma'), icon: Icon(Icons.business_center_outlined)),
+      appBar: AppBar(
+        title: const Text('Kayıt Ol'),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Kullanıcı Tipini Seçin',
+                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  UserTypeSelectorCard(
+                    title: 'Freelancer',
+                    subtitle: 'Tasarımcı, Mühendis',
+                    icon: Icons.person_outline,
+                    isSelected: isFreelancer,
+                    onTap: () => setState(() => _selectedRole = UserRole.freelancer),
+                  ),
+                  const SizedBox(width: 16),
+                  UserTypeSelectorCard(
+                    title: 'Firma',
+                    subtitle: 'İşveren, Firma',
+                    icon: Icons.business_outlined,
+                    isSelected: !isFreelancer,
+                    onTap: () => setState(() => _selectedRole = UserRole.client),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+
+              // --- Sadeleştirilmiş Form Alanları ---
+              if (isFreelancer)
+              // Eğer Freelancer seçiliyse Ad/Soyad göster
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Ad', style: theme.textTheme.labelLarge),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _nameController,
+                            decoration: const InputDecoration(hintText: "Adınız"),
+                            validator: (v) => v!.isEmpty ? 'Bu alan boş olamaz' : null,
+                          ),
                         ],
-                        selected: {_selectedRole},
-                        onSelectionChanged: (newSelection) => setState(() => _selectedRole = newSelection.first),
                       ),
-                      const SizedBox(height: 24),
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: InputDecoration(labelText: _selectedRole == UserRole.freelancer ? 'Adınız ve Soyadınız' : 'Firma Adı'),
-                        validator: (value) => (value == null || value.isEmpty) ? 'Bu alan boş bırakılamaz.' : null,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Soyad', style: theme.textTheme.labelLarge),
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _surnameController,
+                            decoration: const InputDecoration(hintText: "Soyadınız"),
+                            validator: (v) => v!.isEmpty ? 'Bu alan boş olamaz' : null,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: const InputDecoration(labelText: 'E-posta Adresi'),
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (value) => (value == null || !value.contains('@')) ? 'Geçerli bir e-posta girin.' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _passwordController,
-                        decoration: const InputDecoration(labelText: 'Şifre'),
-                        obscureText: true,
-                        validator: (value) => (value == null || value.length < 6) ? 'Şifre en az 6 karakter olmalı.' : null,
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: _isLoading ? null : _signup,
-                        child: _isLoading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('HESAP OLUŞTUR'),
-                      ),
-                    ],
+                    ),
+                  ],
+                )
+              else
+              // Eğer Firma seçiliyse sadece Firma Adı göster
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Firma Adı', style: theme.textTheme.labelLarge),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _companyNameController,
+                      decoration: const InputDecoration(hintText: "Firma Adı"),
+                      validator: (v) => v!.isEmpty ? 'Bu alan boş olamaz' : null,
+                    ),
+                  ],
+                ),
+
+              const SizedBox(height: 16),
+              Text('E-Posta', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(hintText: "E-posta adresiniz"),
+                keyboardType: TextInputType.emailAddress,
+                validator: (v) => (v == null || !v.contains('@')) ? 'Geçerli bir e-posta girin' : null,
+              ),
+
+              const SizedBox(height: 16),
+              Text('Telefon Numarası', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 8),
+              IntlPhoneField(
+                decoration: const InputDecoration(
+                  hintText: 'Telefon Numarası',
+                  border: OutlineInputBorder(),
+                ),
+                initialCountryCode: 'TR', // Varsayılan Türkiye
+                onChanged: (phone) {
+                  // Numara her değiştiğinde tam numarayı (+90...) state'e kaydet
+                  _fullPhoneNumber = phone.completeNumber;
+                },
+              ),
+
+              const SizedBox(height: 16),
+              Text('Şifre', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: !_isPasswordVisible,
+                decoration: InputDecoration(
+                  hintText: "Şifre oluşturun",
+                  suffixIcon: IconButton(
+                    icon: Icon(_isPasswordVisible ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
                   ),
                 ),
+                validator: (v) => (v == null || v.length < 6) ? 'Şifre en az 6 karakter olmalı' : null,
               ),
-            ),
+
+              const SizedBox(height: 16),
+              Text('Şifreyi Onayla', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _confirmPasswordController,
+                obscureText: !_isConfirmPasswordVisible,
+                decoration: InputDecoration(
+                  hintText: "Şifrenizi tekrar girin",
+                  suffixIcon: IconButton(
+                    icon: Icon(_isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
+                  ),
+                ),
+                validator: (v) => (v != _passwordController.text) ? 'Şifreler eşleşmiyor' : null,
+              ),
+
+              const SizedBox(height: 32),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+                onPressed: authProvider.isLoading ? null : _signup,
+                child: authProvider.isLoading
+                    ? const SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                )
+                    : const Text('KAYIT OL'),
+              ),
+            ],
           ),
         ),
       ),

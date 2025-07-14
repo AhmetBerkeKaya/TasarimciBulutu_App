@@ -1,34 +1,50 @@
-// lib/main.dart
-
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/providers/application_provider.dart';
 import 'core/providers/auth_provider.dart';
 import 'core/providers/project_provider.dart';
+import 'core/providers/skill_test_provider.dart';
+import 'core/providers/theme_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/screens/home_screen.dart';
 import 'features/auth/screens/login_screen.dart';
+import 'features/auth/screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('tr_TR'); // <-- DÜZELTİLMİŞ SATIR
-
   runApp(
     MultiProvider(
       providers: [
-        // AuthProvider önce oluşturulur
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
 
-        // Sonra, AuthProvider'dan token'ı alıp ApplicationProvider'ı oluştururuz
         ChangeNotifierProxyProvider<AuthProvider, ApplicationProvider>(
-          create: (context) => ApplicationProvider(null), // Başlangıçta token yok
-          update: (context, auth, previous) => ApplicationProvider(auth.token),
+          create: (context) => ApplicationProvider(),
+          update: (context, auth, previousProvider) {
+            previousProvider?.updateToken(auth.token);
+            return previousProvider ?? ApplicationProvider();
+          },
         ),
 
-        // ProjectProvider'ı da ekleyelim
-        ChangeNotifierProvider(create: (_) => ProjectProvider()),
+        // PROJECT PROVIDER İÇİN GÜNCELLEME
+        ChangeNotifierProxyProvider<AuthProvider, ProjectProvider>(
+          create: (context) => ProjectProvider(),
+          update: (context, auth, previousProvider) {
+            previousProvider?.updateToken(auth.token);
+            return previousProvider ?? ProjectProvider();
+          },
+        ),
+
+        ChangeNotifierProxyProvider<AuthProvider, SkillTestProvider>(
+          create: (context) => SkillTestProvider(),
+          update: (context, auth, previous) {
+            previous?.updateToken(auth.token);
+            return previous ?? SkillTestProvider();
+          },
+        ),
       ],
       child: const MyApp(),
     ),
@@ -38,27 +54,61 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  // MyApp widget'ı içindeki build metodu
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'TasarımcıBulutu',
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-      debugShowCheckedModeBanner: false,
-      home: Consumer<AuthProvider>(
-        builder: (context, auth, _) {
-          if (auth.isLoading) {
-            return const Scaffold(body: Center(child: CircularProgressIndicator()));
-          }
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          title: 'TasarımcıBulutu',
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeProvider.themeMode,
 
-          if (auth.isLoggedIn) {
-            return const HomeScreen();
-          } else {
-            return const LoginScreen();
-          }
-        },
-      ),
+          // --- YENİ EKLENEN ALANLAR ---
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('tr', 'TR'), // Türkçe desteği
+            Locale('en', 'US'), // İngilizce (varsayılan) desteği
+          ],
+          // --- BİTTİ ---
+
+          debugShowCheckedModeBanner: false,
+          home: const AuthWrapper(),
+        );
+      },
+    );
+  }
+}
+
+// Adım 3: Bu yeni widget, Provider'ı dinleyip doğru ekranı seçiyor.
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Burada Consumer kullanarak AuthProvider'ı dinliyoruz.
+    // Bu BuildContext, MaterialApp'in içinde olduğu için Provider'ı bulabilir.
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        // Eğer AuthProvider hala token kontrolü yapıyorsa, SplashScreen'i göster
+        if (auth.isLoading) {
+          return const SplashScreen();
+        }
+
+        // Kontrol bittiyse ve kullanıcı giriş yapmışsa HomeScreen'i göster
+        if (auth.isLoggedIn) {
+          return const HomeScreen();
+        }
+        // Kontrol bittiyse ve giriş yapmamışsa LoginScreen'i göster
+        else {
+          return const LoginScreen();
+        }
+      },
     );
   }
 }
