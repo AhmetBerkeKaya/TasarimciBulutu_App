@@ -97,7 +97,7 @@ class ProjectProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final myProjects = await _apiService.getMyProjects(token: _token!);
+      final myProjects = await _apiService.getMyProjects();
       _myActiveProjects = myProjects.where((p) => p.status == ProjectStatus.open || p.status == ProjectStatus.in_progress).toList();
       _myPendingReviewProjects = myProjects.where((p) => p.status == ProjectStatus.pending_review).toList();
       _myCompletedProjects = myProjects.where((p) => p.status == ProjectStatus.completed).toList();
@@ -111,7 +111,7 @@ class ProjectProvider with ChangeNotifier {
   // Proje yaşam döngüsü aksiyonları...
   Future<bool> deliverProject(String projectId) async {
     if (_token == null) return false;
-    final updatedProject = await _apiService.deliverProject(projectId: projectId, token: _token!);
+    final updatedProject = await _apiService.deliverProject(projectId: projectId);
     if (updatedProject != null) {
       _myActiveProjects.removeWhere((p) => p.id == projectId);
       _myPendingReviewProjects.insert(0, updatedProject);
@@ -123,7 +123,7 @@ class ProjectProvider with ChangeNotifier {
 
   Future<bool> acceptDelivery(String projectId) async {
     if (_token == null) return false;
-    final updatedProject = await _apiService.acceptDelivery(projectId: projectId, token: _token!);
+    final updatedProject = await _apiService.acceptDelivery(projectId: projectId);
     if (updatedProject != null) {
       _myPendingReviewProjects.removeWhere((p) => p.id == projectId);
       _myCompletedProjects.insert(0, updatedProject);
@@ -135,7 +135,7 @@ class ProjectProvider with ChangeNotifier {
 
   Future<bool> requestRevision(String projectId) async {
     if (_token == null) return false;
-    final updatedProject = await _apiService.requestRevision(projectId: projectId, token: _token!);
+    final updatedProject = await _apiService.requestRevision(projectId: projectId);
     if (updatedProject != null) {
       _myPendingReviewProjects.removeWhere((p) => p.id == projectId);
       _myActiveProjects.insert(0, updatedProject);
@@ -152,7 +152,7 @@ class ProjectProvider with ChangeNotifier {
       return false;
     }
 
-    final newReview = await _apiService.submitReview(reviewData: reviewData, token: _token!);
+    final newReview = await _apiService.submitReview(reviewData: reviewData);
 
     if (newReview != null) {
       // Değerlendirme başarılı olursa, paneldeki verileri yenileyerek

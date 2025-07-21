@@ -67,7 +67,7 @@ class SkillTestProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final testResult = await _apiService.startTest(testId: _activeTest!.id, token: _token!);
+      final testResult = await _apiService.startTest(testId: _activeTest!.id);
       if (testResult != null) {
         _activeTestResult = testResult;
         _isLoading = false;
@@ -101,7 +101,6 @@ class SkillTestProvider with ChangeNotifier {
       final result = await _apiService.submitTest(
         resultId: _activeTestResult!.id,
         submission: submissionData,
-        token: _token!,
       );
       if (result != null) {
         _finalResult = result;

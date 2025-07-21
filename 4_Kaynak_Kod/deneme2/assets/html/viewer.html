@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasarımcı Bulutu Viewer</title>
+    <link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.min.css" type="text/css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        #apsViewer {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+<div id="apsViewer"></div>
+
+<script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.min.js"></script>
+
+<script>
+    let viewer;
+
+    // Bu fonksiyon, Flutter tarafından çağrılacak.
+    // Token ve URN'yi parametre olarak alıp görüntüleyiciyi başlatacak.
+    function initializeViewer(urn, token) {
+        const options = {
+            env: 'AutodeskProduction',
+            accessToken: token
+        };
+
+        Autodesk.Viewing.Initializer(options, () => {
+            const config = {
+                extensions: ['Autodesk.DocumentBrowser'] // Modeldeki farklı görünümleri (3D, 2D) listeler
+            };
+            viewer = new Autodesk.Viewing.GuiViewer3D(document.getElementById('apsViewer'), config);
+            viewer.start();
+
+            const documentId = 'urn:' + urn;
+            Autodesk.Viewing.Document.load(documentId, onDocumentLoadSuccess, onDocumentLoadFailure);
+        });
+    }
+
+    function onDocumentLoadSuccess(doc) {
+        const viewables = doc.getRoot().getDefaultGeometry();
+        viewer.loadDocumentNode(doc, viewables).then(i => {
+            // Model yüklendiğinde yapılacak ek işlemler (opsiyonel)
+            console.log('Model başarıyla yüklendi.');
+        });
+    }
+
+    function onDocumentLoadFailure(viewerErrorCode, viewerErrorMsg) {
+        console.error('Model yüklenemedi - Hata Kodu: ' + viewerErrorCode + ' Mesaj: ' + viewerErrorMsg);
+    }
+</script>
+</body>
+</html>

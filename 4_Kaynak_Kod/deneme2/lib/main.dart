@@ -6,8 +6,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/providers/application_provider.dart';
 import 'core/providers/auth_provider.dart';
 import 'core/providers/project_provider.dart';
+import 'core/providers/showcase_provider.dart';
 import 'core/providers/skill_test_provider.dart';
 import 'core/providers/theme_provider.dart';
+import 'core/services/api_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/screens/home_screen.dart';
 import 'features/auth/screens/login_screen.dart';
@@ -44,6 +46,10 @@ void main() async {
             previous?.updateToken(auth.token);
             return previous ?? SkillTestProvider();
           },
+        ),
+
+        ChangeNotifierProvider(
+          create: (_) => ShowcaseProvider(ApiService()),
         ),
       ],
       child: const MyApp(),
