@@ -36,12 +36,6 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-database_url = os.getenv("DATABASE_URL")
-if database_url:
-    # Eğer DATABASE_URL varsa, alembic.ini'deki değeri onunla ez.
-    # Bu, canlıda Railway'in veritabanını, yerelde ise kendi veritabanımızı
-    # kullanmamızı sağlar.
-    config.set_main_option("sqlalchemy.url", database_url.replace("postgresql+psycopg2", "postgresql"))
 # --- 3. DEĞİŞİKLİK: target_metadata'yı kendi modellerimize ayarlayalım ---
 target_metadata = Base.metadata # <-- BU SATIRI DEĞİŞTİRİN
 # --- BİTTİ ---

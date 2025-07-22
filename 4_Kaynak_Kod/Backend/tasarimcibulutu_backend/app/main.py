@@ -1,6 +1,6 @@
 # app/main.py
 from fastapi import FastAPI
-from app.routers import user, project, application, auth, message, notification, skill_test, skill, portfolio, work_experience, review, showcase,aps,webhook
+from app.routers import user, project, application, auth, message, notification, skill_test, skill, portfolio, work_experience, review
 from fastapi.staticfiles import StaticFiles # Yeni import
 from . import models
 from .database import engine
@@ -27,9 +27,6 @@ app.include_router(skill.router)
 app.include_router(portfolio.router)
 app.include_router(work_experience.router)
 app.include_router(review.router)
-app.include_router(showcase.router)
-app.include_router(aps.router)
-app.include_router(webhook.router)
 
 @app.get("/")
 def read_root():

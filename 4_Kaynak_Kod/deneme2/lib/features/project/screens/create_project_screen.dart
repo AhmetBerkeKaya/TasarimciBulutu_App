@@ -43,6 +43,7 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
         budgetMin: int.tryParse(_budgetMinController.text),
         budgetMax: int.tryParse(_budgetMaxController.text),
         deadline: _selectedDeadline,
+        token: token,
       );
 
       if (mounted) {

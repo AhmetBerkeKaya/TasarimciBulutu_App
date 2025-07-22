@@ -35,7 +35,7 @@ class ApplicationProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      _myApplications = await _apiService.getMyApplications();
+      _myApplications = await _apiService.getMyApplications(token: _token!);
     } catch (e) {
       _errorMessage = "Başvurular yüklenirken bir hata oluştu.";
       _myApplications = [];
@@ -60,6 +60,7 @@ class ApplicationProvider with ChangeNotifier {
       projectId: projectId,
       coverLetter: coverLetter,
       proposedBudget: proposedBudget,
+      token: _token!,
     );
 
     if (success) {
@@ -86,6 +87,7 @@ class ApplicationProvider with ChangeNotifier {
     final success = await _apiService.updateApplicationStatus(
       applicationId: applicationId,
       newStatus: newStatus,
+      token: _token!,
     );
 
     if (success) {

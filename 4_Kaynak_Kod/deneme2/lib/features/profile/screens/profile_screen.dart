@@ -52,7 +52,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _isMyProfile = false;
       final token = authProvider.token;
       if (token != null) {
-        _userFuture = ApiService().getUserProfileById(userId: widget.userId!);
+        _userFuture = ApiService().getUserProfileById(userId: widget.userId!, token: token);
       }
     }
   }

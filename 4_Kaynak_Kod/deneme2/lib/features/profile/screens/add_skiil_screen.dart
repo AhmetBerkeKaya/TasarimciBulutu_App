@@ -23,7 +23,7 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
   void initState() {
     super.initState();
     final token = Provider.of<AuthProvider>(context, listen: false).token;
-    _skillsFuture = _apiService.getAvailableSkills();
+    _skillsFuture = _apiService.getAvailableSkills(token: token!);
   }
 
   Future<void> _addSkill(String skillId) async {

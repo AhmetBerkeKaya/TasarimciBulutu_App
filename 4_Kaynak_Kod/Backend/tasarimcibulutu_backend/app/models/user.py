@@ -48,4 +48,3 @@ class User(Base):
     # --- YENİ EKLENECEK İLİŞKİLER ---
     reviews_given = relationship("Review", foreign_keys="Review.reviewer_id", back_populates="reviewer", cascade="all, delete-orphan")
     reviews_received = relationship("Review", foreign_keys="Review.reviewee_id", back_populates="reviewee", cascade="all, delete-orphan")
-    showcase_posts = relationship("ShowcasePost", back_populates="owner", cascade="all, delete-orphan")

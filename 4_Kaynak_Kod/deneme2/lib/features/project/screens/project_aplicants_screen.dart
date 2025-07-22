@@ -43,6 +43,7 @@ class _ProjectApplicantsScreenState extends State<ProjectApplicantsScreen> {
     if (token != null) {
       _applicantsFuture = _apiService.getApplicationsForProject(
         projectId: widget.projectId,
+        token: token,
       );
     } else {
       _applicantsFuture = Future.value([]);

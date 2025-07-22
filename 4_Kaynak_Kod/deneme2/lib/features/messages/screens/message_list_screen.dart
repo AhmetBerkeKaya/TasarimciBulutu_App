@@ -35,7 +35,7 @@ class _MessageListScreenState extends State<MessageListScreen> {
     if (token != null) {
       // Future'ı setState içinde güncellemek, FutureBuilder'ın yeniden tetiklenmesini sağlar
       setState(() {
-        _conversationsFuture = _apiService.getConversations();
+        _conversationsFuture = _apiService.getConversations(token: token);
       });
     } else {
       // Token yoksa boş bir liste göster
@@ -127,6 +127,7 @@ class _MessageListScreenState extends State<MessageListScreen> {
                     if (confirmed == true) {
                       final success = await _apiService.deleteConversation(
                         otherUserId: otherUser.id,
+                        token: authProvider.token!,
                       );
                       if (success) {
                         // İşlem backend'de başarılı olursa, listeyi yenilemek için Future'ı tekrar tetikle
