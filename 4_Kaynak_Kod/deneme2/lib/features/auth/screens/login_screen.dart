@@ -1,3 +1,6 @@
+// lib/features/auth/screens/login_screen.dart
+
+import 'package:deneme2/features/auth/screens/home_screen.dart'; // HomeScreen'i import et
 import 'package:deneme2/features/auth/screens/signup_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
@@ -16,7 +19,6 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -24,22 +26,37 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = false;
 
   Future<void> _login() async {
-    if (_formKey.currentState?.validate() ?? false) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final success = await authProvider.login(
-        _emailController.text,
-        _passwordController.text,
-      );
+    FocusScope.of(context).unfocus();
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
 
-      if (!success && mounted) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.login(
+      _emailController.text.trim(),
+      _passwordController.text.trim(),
+    );
+
+    // --- DEĞİŞİKLİK BURADA ---
+    if (mounted) { // Widget'ın hala ekranda olduğundan emin ol
+      if (success) {
+        // BAŞARILI DURUM: Giriş başarılı olduğunda, AuthWrapper'ı beklemeden
+        // proaktif olarak HomeScreen'e yönlendir. Bu, "takılma" bug'ını çözer.
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+              (route) => false, // Tüm geçmişi temizle
+        );
+      } else {
+        // BAŞARISIZ DURUM: Hata mesajı göster.
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('E-posta veya şifre hatalı!'),
+          SnackBar(
+            content: Text(authProvider.lastError ?? 'E-posta veya şifre hatalı!'),
             backgroundColor: Colors.red,
           ),
         );
       }
     }
+    // --- DEĞİŞİMİN SONU ---
   }
 
   @override
@@ -51,11 +68,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // build metodunun geri kalanı tamamen aynı kalacak...
     final theme = Theme.of(context);
     final authProvider = Provider.of<AuthProvider>(context);
     final isDarkMode = theme.brightness == Brightness.dark;
 
-    // --- Dinamik Gradyan Tanımı ---
     final primaryGradient = LinearGradient(
       colors: [
         theme.primaryColor.withOpacity(0.9),
@@ -89,7 +106,6 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // --- Logo ---
                 Container(
                   width: 160,
                   height: 160,
@@ -107,8 +123,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: SvgPicture.asset(
                     'assets/svgs/logo.svg',
-                    // Koyu temada logo beyaz ise bu satıra gerek yok.
-                    // color: isDarkMode ? Colors.white : null,
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -120,8 +134,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.secondary),
                 ),
                 const SizedBox(height: 40),
-
-                // Giriş Formu
                 Form(
                   key: _formKey,
                   child: Column(
@@ -136,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           prefixIcon: Icon(Icons.email_outlined),
                         ),
                         keyboardType: TextInputType.emailAddress,
-                        validator: (value) => (value == null || !value.contains('@')) ? 'Geçerli bir e-posta girin.' : null,
+                        validator: (value) => (value == null || value.trim().isEmpty || !value.contains('@')) ? 'Geçerli bir e-posta girin.' : null,
                       ),
                       const SizedBox(height: 16),
                       Text('Şifre', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold)),
@@ -179,10 +191,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 24),
-
-                // Gradyanlı Buton
                 InkWell(
                   onTap: authProvider.isLoading ? null : _login,
                   borderRadius: BorderRadius.circular(8.0),
@@ -203,9 +212,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Center(child: buttonContent),
                   ),
                 ),
-
                 const SizedBox(height: 24),
-
                 Row(
                   children: [
                     const Expanded(child: Divider()),
@@ -216,35 +223,25 @@ class _LoginScreenState extends State<LoginScreen> {
                     const Expanded(child: Divider()),
                   ],
                 ),
-
                 const SizedBox(height: 24),
-
                 SocialLoginButton(
                   text: 'Google ile Giriş',
                   icon: Icon(
                     Icons.g_mobiledata_rounded,
                     color: theme.textTheme.bodyLarge?.color,
                   ),
-                  onPressed: () {
-                    // TODO: Google Login
-                  },
+                  onPressed: () {},
                 ),
-
                 const SizedBox(height: 16),
-
                 SocialLoginButton(
                   text: 'Apple ile Giriş',
                   icon: Icon(
                     Icons.apple,
                     color: theme.textTheme.bodyLarge?.color,
                   ),
-                  onPressed: () {
-                    // TODO: Apple Login
-                  },
+                  onPressed: () {},
                 ),
-
                 const SizedBox(height: 48),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
