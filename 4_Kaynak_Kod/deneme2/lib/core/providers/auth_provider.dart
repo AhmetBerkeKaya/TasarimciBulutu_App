@@ -12,6 +12,7 @@ class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
   final ApiService _apiService = ApiService();
 
+  // ... (mevcut değişkenler aynı)
   String? _lastError;
   String? get lastError => _lastError;
 
@@ -32,6 +33,45 @@ class AuthProvider with ChangeNotifier {
     tryAutoLogin();
   }
 
+  // --- YENİ METOTLAR ---
+
+  /// Şifre sıfırlama kodu talebi gönderir.
+  Future<bool> requestPasswordReset(String email) async {
+    _isLoading = true;
+    _lastError = null;
+    notifyListeners();
+
+    final success = await _authService.requestPasswordReset(email);
+    if (!success) {
+      _lastError = "Şifre sıfırlama talebi gönderilemedi. Lütfen tekrar deneyin.";
+    }
+
+    _isLoading = false;
+    notifyListeners();
+    return success;
+  }
+
+  /// Verilen kod ve yeni şifre ile şifreyi sıfırlar.
+  Future<bool> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    _isLoading = true;
+    _lastError = null;
+    notifyListeners();
+
+    final success = await _authService.resetPassword(token: token, newPassword: newPassword);
+    if (!success) {
+      _lastError = "Şifre sıfırlanamadı. Kod geçersiz veya süresi dolmuş olabilir.";
+    }
+
+    _isLoading = false;
+    notifyListeners();
+    return success;
+  }
+
+  // --- MEVCUT METOTLAR (DEĞİŞİKLİK YOK) ---
+  // login, tryAutoLogin, logout, signup vb. fonksiyonlar olduğu gibi kalacak...
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     notifyListeners();

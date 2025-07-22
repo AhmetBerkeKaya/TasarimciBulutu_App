@@ -1,4 +1,4 @@
-// lib/core/services/auth_service.dart (YENİ HALİ)
+// lib/core/services/auth_service.dart
 
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -11,6 +11,43 @@ class AuthService {
   final Dio _dio = DioClient.instance.dio;
   final _storage = const FlutterSecureStorage();
 
+  // --- YENİ FONKSİYONLAR ---
+
+  /// Backend'e şifre sıfırlama kodu gönderilmesi için istek atar.
+  Future<bool> requestPasswordReset(String email) async {
+    try {
+      await _dio.post(
+        '/password-recovery',
+        data: {'email': email},
+      );
+      // Backend her zaman 200 OK döneceği için (güvenlik gereği),
+      // bir hata fırlatılmadığı sürece başarılı kabul ediyoruz.
+      return true;
+    } on DioException catch (e) {
+      print('requestPasswordReset DioException: ${e.response?.data}');
+      return false;
+    }
+  }
+
+  /// Verilen token ve yeni şifre ile şifreyi sıfırlar.
+  Future<bool> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/reset-password',
+        data: {'token': token, 'new_password': newPassword},
+      );
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      print('resetPassword DioException: ${e.response?.data}');
+      return false;
+    }
+  }
+
+  // --- MEVCUT FONKSİYONLAR (DEĞİŞİKLİK YOK) ---
+
   Future<User?> signup({
     required String name,
     required String email,
@@ -20,7 +57,7 @@ class AuthService {
   }) async {
     try {
       final response = await _dio.post(
-        '/users/', // Base URL zaten Dio'da tanımlı
+        '/users/',
         data: {
           'email': email,
           'name': name,
@@ -41,7 +78,6 @@ class AuthService {
 
   Future<String?> login(String email, String password) async {
     try {
-      // Dio, form-urlencoded veriyi otomatik anlar.
       final response = await _dio.post(
         '/token',
         data: {'username': email, 'password': password},
@@ -51,9 +87,12 @@ class AuthService {
       );
 
       if (response.statusCode == 200) {
-        final token = response.data['access_token'];
-        await _storage.write(key: 'access_token', value: token);
-        return token;
+        // "Beni Hatırla" için refresh_token'ı saklayalım
+        final accessToken = response.data['access_token'];
+        final refreshToken = response.data['refresh_token'];
+        await _storage.write(key: 'access_token', value: accessToken);
+        await _storage.write(key: 'refresh_token', value: refreshToken);
+        return accessToken;
       }
       return null;
     } on DioException catch (e) {
@@ -62,8 +101,8 @@ class AuthService {
     }
   }
 
+  // Diğer fonksiyonlar (getMe, logout, getToken) aynı kalacak
   Future<User?> getMe() async {
-    // Token parametresine gerek kalmadı, Interceptor hallediyor!
     try {
       final response = await _dio.get('/users/me');
       if (response.statusCode == 200) {
@@ -77,7 +116,7 @@ class AuthService {
   }
 
   Future<void> logout() async {
-    await _storage.delete(key: 'access_token');
+    await _storage.deleteAll(); // Hem access hem de refresh token'ı sil
   }
 
   Future<String?> getToken() async {
