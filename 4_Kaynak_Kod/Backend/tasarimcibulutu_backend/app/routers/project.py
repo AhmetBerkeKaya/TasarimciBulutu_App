@@ -1,4 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+# app/routers/project.py
+
+# --- YENİ İMPORTLAR ---
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+# --- BİTTİ ---
+
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID
@@ -6,20 +13,32 @@ from app import crud, schemas
 from app.dependencies import get_db, get_current_user
 from app.models.user import User as UserModel, UserRole
 
+# --- BU ROUTER'A ÖZEL LIMITER BAŞLATMA ---
+# Her router kendi limiter'ına sahip olabilir veya global olanı kullanabilir.
+# Burada açıkça tanımlamak daha anlaşılır olmasını sağlar.
+limiter = Limiter(key_func=get_remote_address)
+# --- BİTTİ ---
+
+
 router = APIRouter(
     prefix="/projects",
     tags=["projects"]
 )
 
 # --- Proje Oluşturma ve Listeleme Endpoint'leri ---
+
 @router.post("/", response_model=schemas.Project, status_code=status.HTTP_201_CREATED)
-def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
+# Proje oluşturma kritik bir işlemdir, spam'i önlemek için sıkı bir limit koyalım.
+@limiter.limit("10/hour")
+def create_project(request: Request, project: schemas.ProjectCreate, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
     if current_user.role != UserRole.client:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only clients can create projects.")
     return crud.project.create_project(db=db, project=project, owner_id=current_user.id)
 
 @router.get("/me", response_model=List[schemas.Project])
-def read_my_projects(db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
+# Kullanıcının kendi projelerini listelemesi, genel listelemeye göre daha az sıklıkta kullanılır.
+@limiter.limit("30/minute")
+def read_my_projects(request: Request, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
     if current_user.role == UserRole.client:
         return crud.project.get_projects_by_user(db, user_id=current_user.id)
     elif current_user.role == UserRole.freelancer:
@@ -27,25 +46,25 @@ def read_my_projects(db: Session = Depends(get_db), current_user: UserModel = De
     return []
 
 @router.get("/", response_model=List[schemas.Project])
+# Genel proje listesi en sık çağrılacak endpoint'tir. Scraping'i önlemek için global limitten daha sıkı olabilir.
+@limiter.limit("60/minute")
 def read_projects(
+    request: Request,
     db: Session = Depends(get_db),
-    skip: int = 0, 
-    limit: int = 100, 
+    skip: int = 0,
+    limit: int = 100,
     search: Optional[str] = None,
     category: Optional[str] = None,
-    # --- YENİ PARAMETRELER ---
     min_budget: Optional[float] = None,
     max_budget: Optional[float] = None,
-    sort_by: Optional[str] = None  # Örn: 'newest', 'budget_high', 'budget_low'
-    # --- BİTTİ ---
+    sort_by: Optional[str] = None
 ):
     projects = crud.project.get_projects(
-        db=db, 
-        skip=skip, 
-        limit=limit, 
-        search=search, 
+        db=db,
+        skip=skip,
+        limit=limit,
+        search=search,
         category=category,
-        # --- YENİ PARAMETRELERİ CRUD FONKSİYONUNA GÖNDER ---
         min_budget=min_budget,
         max_budget=max_budget,
         sort_by=sort_by
@@ -54,14 +73,17 @@ def read_projects(
 
 
 @router.get("/{project_id}", response_model=schemas.Project)
-def read_project(project_id: UUID, db: Session = Depends(get_db)):
+# Tek bir proje detayını okumak daha az yoğundur.
+@limiter.limit("120/minute")
+def read_project(request: Request, project_id: UUID, db: Session = Depends(get_db)):
     db_project = crud.project.get_project(db=db, project_id=project_id)
     if not db_project:
         raise HTTPException(status_code=404, detail="Project not found")
     return db_project
 
 @router.get("/{project_id}/applications", response_model=List[schemas.Application])
-def get_project_applications(project_id: UUID, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
+@limiter.limit("60/minute")
+def get_project_applications(request: Request, project_id: UUID, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
     project = crud.project.get_project(db, project_id=project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -71,37 +93,32 @@ def get_project_applications(project_id: UUID, db: Session = Depends(get_db), cu
 
 
 # --- Proje Yaşam Döngüsü Endpoint'leri (Teslim Et, Onayla, Revizyon İste) ---
+# Bu işlemler proje durumunu değiştirir ve önemlidir. Spamlenmemelidir.
+# Saatlik bir limit, yanlışlıkla çift tıklama gibi sorunları engellerken normal kullanımı kısıtlamaz.
 
 @router.put("/{project_id}/deliver", response_model=schemas.Project, summary="Freelancer işi teslim eder")
-def deliver_project_as_freelancer(project_id: UUID, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
-    
-    # --- YENİ TANI KOYMA SATIRI ---
-    print(f"\n✅✅✅ /deliver ENDPOINT'İ BAŞARIYLA TETİKLENDİ! Proje ID: {project_id} ✅✅✅\n")
-    # --- BİTTİ ---
-
+@limiter.limit("20/hour")
+def deliver_project_as_freelancer(request: Request, project_id: UUID, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
     if current_user.role != UserRole.freelancer:
         raise HTTPException(status_code=403, detail="Only freelancers can deliver projects.")
-    
     updated_project = crud.project.deliver_project(db=db, project_id=project_id, freelancer_id=current_user.id)
-    
     if not updated_project:
         raise HTTPException(status_code=404, detail="Project not found, not in progress, or you are not the assigned freelancer.")
-        
     return updated_project
+
 @router.put("/{project_id}/accept", response_model=schemas.Project, summary="Firma teslimatı onaylar ve projeyi tamamlar")
-def accept_delivery_and_complete_project(project_id: UUID, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
+@limiter.limit("20/hour")
+def accept_delivery_and_complete_project(request: Request, project_id: UUID, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
     if current_user.role != UserRole.client:
         raise HTTPException(status_code=403, detail="Only clients can accept deliveries.")
     updated_project = crud.project.accept_and_complete_project(db=db, project_id=project_id, owner_id=current_user.id)
     if not updated_project:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Project is not in progress or you are not the assigned freelancer."
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Project is not in progress or you are not the assigned freelancer.")
     return updated_project
 
 @router.put("/{project_id}/request-revision", response_model=schemas.Project, summary="Firma revizyon talep eder")
-def request_revision_as_client(project_id: UUID, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
+@limiter.limit("20/hour")
+def request_revision_as_client(request: Request, project_id: UUID, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
     if current_user.role != UserRole.client:
         raise HTTPException(status_code=403, detail="Only clients can request revisions.")
     updated_project = crud.project.request_revision(db=db, project_id=project_id, owner_id=current_user.id)

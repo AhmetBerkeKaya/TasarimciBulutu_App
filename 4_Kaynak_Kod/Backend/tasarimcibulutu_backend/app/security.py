@@ -1,14 +1,10 @@
-# app/security.py
+# security.py
+
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-
-# .env dosyasından okumak daha güvenli, şimdilik burada tanımlıyoruz.
-# GERÇEK PROJEDE BU BİLGİLERİ .ENV DOSYASINDAN ÇEK!
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30 # Token'ın geçerlilik süresi (dakika)
+from app.config import settings # Ayarları config dosyasından import ediyoruz
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -19,11 +15,36 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """
+    Kısa süreli access token oluşturur.
+    """
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+        # Ayarlardan gelen geçerlilik süresini kullanıyoruz
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    # Ayarlardan gelen SECRET_KEY ve ALGORITHM'u kullanıyoruz
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
+
+# --- YENİ FONKSİYON ---
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """
+    Uzun süreli refresh token oluşturur.
+    """
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        # Ayarlardan gelen geçerlilik süresini kullanıyoruz (gün olarak)
+        expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
+    to_encode.update({"exp": expire})
+    # Refresh token'a özel bir belirteç ekleyebiliriz (isteğe bağlı ama iyi bir pratik)
+    to_encode.update({"type": "refresh"})
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
+# --- YENİ FONKSİYON SONU ---

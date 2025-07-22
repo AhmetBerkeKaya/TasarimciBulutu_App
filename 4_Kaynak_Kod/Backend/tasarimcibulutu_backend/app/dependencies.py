@@ -4,10 +4,11 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-# --- DOĞRU IMPORT'LAR ---
-from app import database, security
+# --- DEĞİŞEN/EKLENEN IMPORT'LAR ---
+from app import database
 from app.crud import user as user_crud
-from app.schemas.token import TokenData # <-- TokenData'yı doğrudan kendi dosyasından alıyoruz
+from app.schemas.token import TokenData
+from app.config import settings # YENİ: Ayarları okumak için settings'i import ediyoruz
 # --- BİTTİ ---
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -19,7 +20,6 @@ def get_db():
     finally:
         db.close()
 
-# Bu fonksiyonun adını eski haline getirelim, çünkü router'larda bunu kullanıyorduk.
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -27,11 +27,15 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
+        # --- DEĞİŞEN SATIR ---
+        # Artık SECRET_KEY ve ALGORITHM'u 'security' modülünden değil,
+        # merkezi 'settings' nesnesinden alıyoruz.
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        # --- DEĞİŞİMİN SONU ---
+
         email: str | None = payload.get("sub")
         if email is None:
             raise credentials_exception
-        # TokenData'yı burada artık tanıyor
         token_data = TokenData(email=email)
     except JWTError:
         raise credentials_exception
