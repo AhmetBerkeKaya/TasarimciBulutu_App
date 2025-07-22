@@ -45,4 +45,6 @@ class User(Base):
     work_experiences = relationship("WorkExperience", back_populates="owner", cascade="all, delete-orphan")
     reviews_given = relationship("Review", foreign_keys="Review.reviewer_id", back_populates="reviewer", cascade="all, delete-orphan")
     reviews_received = relationship("Review", foreign_keys="Review.reviewee_id", back_populates="reviewee", cascade="all, delete-orphan")
-
+    showcase_posts = relationship("ShowcasePost", back_populates="owner", cascade="all, delete-orphan")
+    likes = relationship("PostLike", back_populates="user", cascade="all, delete-orphan")
+    comments = relationship("PostComment", back_populates="author", cascade="all, delete-orphan")

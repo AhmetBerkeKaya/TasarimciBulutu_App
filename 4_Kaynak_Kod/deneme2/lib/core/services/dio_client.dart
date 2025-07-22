@@ -2,17 +2,16 @@
 
 import 'package:dio/dio.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
-
-import 'auth_service.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class DioClient {
-  // Singleton pattern: Uygulama boyunca tek bir Dio nesnesi kullanılmasını sağlar.
+  // Singleton pattern
   DioClient._();
   static final instance = DioClient._();
 
   final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: "http://10.0.2.2:8000", // Temel URL'yi buraya taşıdık
+      baseUrl: "http://10.0.2.2:8000",
       connectTimeout: const Duration(seconds: 60),
       receiveTimeout: const Duration(seconds: 60),
       responseType: ResponseType.json,
@@ -28,29 +27,58 @@ class DioClient {
 // --- INTERCEPTOR'LAR ---
 
 class AuthInterceptor extends Interceptor {
+  // AuthService'in tamamını çağırmak yerine, sadece ihtiyacımız olan
+  // FlutterSecureStorage'ı doğrudan kullanmak daha verimli ve temizdir.
+  final _storage = const FlutterSecureStorage();
+
   @override
   void onRequest(
       RequestOptions options, RequestInterceptorHandler handler) async {
 
-    // --- MANTIK HATASI BURADA DÜZELTİLDİ ---
-    // Sadece login ve signup endpoint'leri herkese açık olmalı.
-    final isPublicPath = options.path == '/token' ||
-        (options.path == '/users/' && options.method == 'POST');
+    // --- KALICI DÜZELTME ---
+    // Token GEREKTİRMEYEN tüm endpoint'leri burada listeliyoruz.
+    // Bu, gelecekte yeni public endpoint'ler eklendiğinde
+    // sadece burayı güncellememizin yeterli olmasını sağlar.
+    final publicPaths = [
+      '/token',
+      '/users/', // Sadece POST metodu için kontrol aşağıda yapılıyor
+      '/password-recovery',
+      '/reset-password',
+      '/auth/google', // Google ile giriş de public olmalı
+    ];
 
-    // Eğer istek herkese açık bir yola DEĞİLSE, token eklemeyi dene.
-    if (!isPublicPath) {
-      final String? token = await AuthService().getToken();
+    // Mevcut isteğin yolu, public yollardan biriyle eşleşiyor mu?
+    bool isPublic = publicPaths.contains(options.path);
+
+    // Kayıt olma (/users/) endpoint'i sadece POST metodu ile public olmalı.
+    if (options.path == '/users/' && options.method != 'POST') {
+      isPublic = false;
+    }
+
+    // Eğer istek public DEĞİLSE, token eklemeyi dene.
+    if (!isPublic) {
+      final String? token = await _storage.read(key: 'access_token');
       if (token != null) {
         options.headers['Authorization'] = 'Bearer $token';
         print('>>> AuthInterceptor: Token eklendi -> ${options.path}');
       } else {
-        print('>>> AuthInterceptor: Token bulunamadı -> ${options.path}');
+        // Token gerektiren bir istekte token bulunamazsa, bu bir hatadır.
+        // İsteği bir hata ile reddedebiliriz. Bu, uygulamanın
+        // beklenmedik durumlarda çökmesini önler.
+        print('>>> AuthInterceptor: Token bulunamadı, istek engellendi -> ${options.path}');
+        handler.reject(
+          DioException(
+            requestOptions: options,
+            error: "Authentication token not found.",
+          ),
+        );
+        return; // reject'ten sonra devam etme
       }
     }
     // --- DÜZELTME SONU ---
 
     // İsteğin devam etmesine izin ver
-    super.onRequest(options, handler);
+    handler.next(options);
   }
 }
 

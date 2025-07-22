@@ -19,11 +19,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-    
-    # --- YENİ: ŞİFRE SIFIRLAMA AYARI ---
-    RESET_TOKEN_EXPIRE_MINUTES: int = 60 # Token'ın geçerlilik süresi (dakika)
+    RESET_TOKEN_EXPIRE_MINUTES: int = 60
 
-    # --- YENİ: E-POSTA AYARLARI ---
+    # E-posta Ayarları
     MAIL_USERNAME: str
     MAIL_PASSWORD: str
     MAIL_FROM: EmailStr
@@ -31,6 +29,12 @@ class Settings(BaseSettings):
     MAIL_SERVER: str
     MAIL_STARTTLS: bool = True
     MAIL_SSL_TLS: bool = False
+
+    # --- YENİ: AWS S3 AYARLARI ---
+    AWS_ACCESS_KEY_ID: str
+    AWS_SECRET_ACCESS_KEY: str
+    AWS_S3_BUCKET_NAME: str
+    AWS_REGION: str
 
     class Config:
         env_file = ".env"

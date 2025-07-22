@@ -9,7 +9,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from .config import settings
 from slowapi.util import get_remote_address # get_remote_address'ı da import edelim
 
-from app.routers import user, project, application, auth, message, notification, skill_test, skill, portfolio, work_experience, review
+from app.routers import user, project, application, auth, message, notification, skill_test, skill, portfolio, work_experience, review, showcase
 from fastapi.staticfiles import StaticFiles
 from . import models
 from .database import engine
@@ -56,6 +56,7 @@ app.include_router(skill.router)
 app.include_router(portfolio.router)
 app.include_router(work_experience.router)
 app.include_router(review.router)
+app.include_router(showcase.router)
 
 @app.get("/")
 # Bu özel limit, global limiti ezer.

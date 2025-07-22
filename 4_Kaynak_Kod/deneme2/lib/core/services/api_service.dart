@@ -2,18 +2,40 @@
 
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:mime/mime.dart';
 import '../../data/models/application_model.dart';
+import '../../data/models/comment_model.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/message_model.dart';
 import '../../data/models/portfolio_item_model.dart';
 import '../../data/models/project_model.dart';
 import '../../data/models/review_model.dart';
+import '../../data/models/showcase_post_model.dart';
 import '../../data/models/skill_model.dart';
 import '../../data/models/skill_test.dart';
 import '../../data/models/test_result_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/work_experience_model.dart';
 import 'dio_client.dart';
+import 'package:http_parser/http_parser.dart'; // YENİ IMPORT: MediaType için
+
+
+class PresignedUrlResponse {
+  final String url;
+  final Map<String, dynamic> fields;
+  final String finalFileUrl;
+
+  PresignedUrlResponse({required this.url, required this.fields, required this.finalFileUrl});
+
+  factory PresignedUrlResponse.fromJson(Map<String, dynamic> json) {
+    return PresignedUrlResponse(
+      url: json['url'],
+      fields: Map<String, dynamic>.from(json['fields']),
+      finalFileUrl: json['final_file_url'],
+    );
+  }
+}
+
 
 class ApiService {
   final Dio _dio = DioClient.instance.dio;
@@ -21,8 +43,114 @@ class ApiService {
   // Fonksiyonlardan 'token' parametrelerinin kalktığına dikkat et!
   // Interceptor'lar sayesinde artık onlara ihtiyacımız yok.
 
+  Future<List<ShowcasePost>> getShowcasePosts({int page = 0, int limit = 20}) async {
+    try {
+      final response = await _dio.get(
+        '/showcase/posts',
+        queryParameters: {'skip': page * limit, 'limit': limit},
+      );
+      return (response.data as List)
+          .map((json) => ShowcasePost.fromJson(json))
+          .toList();
+    } on DioException catch (e) {
+      print('getShowcasePosts DioException: ${e.response?.data}');
+      return [];
+    }
+  }
 
-  // --- Project ---
+  Future<PresignedUrlResponse?> getPresignedUploadUrl(File file) async {
+    try {
+      final fileName = file.path.split('/').last;
+      final contentType = lookupMimeType(file.path) ?? 'application/octet-stream';
+      final response = await _dio.post(
+        '/showcase/upload-url',
+        data: {'filename': fileName, 'content_type': contentType},
+      );
+      return PresignedUrlResponse.fromJson(response.data);
+    } on DioException catch (e) {
+      print('getPresignedUploadUrl DioException: ${e.response?.data}');
+      return null;
+    }
+  }
+
+  Future<bool> uploadFileToS3({
+    required PresignedUrlResponse presignedData,
+    required File file,
+  }) async {
+    try {
+      final contentType = lookupMimeType(file.path) ?? 'application/octet-stream';
+
+      // FormData'yı S3'ün beklediği SÖZLEŞMEYE %100 UYGUN şekilde oluşturuyoruz.
+      final formData = FormData.fromMap({
+        ...presignedData.fields,
+        // S3'ün hata mesajında istediği eksik alan tam olarak buydu:
+        'Content-Type': contentType,
+        'file': await MultipartFile.fromFile(file.path),
+      });
+
+      final s3Dio = Dio();
+      final response = await s3Dio.post(presignedData.url, data: formData);
+
+      // Başarılı yükleme durumunda S3 204 No Content döner.
+      return response.statusCode == 204;
+    } catch (e) {
+      print('❌ S3 yükleme hatası: $e');
+      if (e is DioException) {
+        print('🔴 DioException Detayları:');
+        print('  - Hata Tipi: ${e.type}');
+        print('  - İstek Adresi: ${e.requestOptions.uri}');
+        print('  - Sunucu Cevabı (Response Body): ${e.response?.data}');
+      }
+      return false;
+    }
+  }
+
+
+  Future<ShowcasePost?> createShowcasePost({ required String title, String? description, String? fileUrl }) async {
+    try {
+      final response = await _dio.post('/showcase/posts', data: { 'title': title, 'description': description, 'file_url': fileUrl, });
+      return ShowcasePost.fromJson(response.data);
+    } on DioException catch (e) {
+      print('createShowcasePost DioException: ${e.response?.data}');
+      return null;
+    }
+  }
+
+
+  Future<bool> likePost({required String postId}) async {
+    try {
+      final response = await _dio.post('/showcase/posts/$postId/like');
+      return response.statusCode == 201; // Created
+    } on DioException {
+      return false;
+    }
+  }
+
+  Future<bool> unlikePost({required String postId}) async {
+    try {
+      final response = await _dio.delete('/showcase/posts/$postId/like');
+      return response.statusCode == 204; // No Content
+    } on DioException {
+      return false;
+    }
+  }
+
+  Future<Comment?> addComment({
+    required String postId,
+    required String content,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/showcase/posts/$postId/comments',
+        data: {'content': content},
+      );
+      return Comment.fromJson(response.data);
+    } on DioException catch (e) {
+      print('addComment DioException: ${e.response?.data}');
+      return null;
+    }
+  }
+
   Future<bool> createProject({required String title, required String description, required String category, int? budgetMin, int? budgetMax, DateTime? deadline}) async {
     try {
       await _dio.post('/projects/', data: {

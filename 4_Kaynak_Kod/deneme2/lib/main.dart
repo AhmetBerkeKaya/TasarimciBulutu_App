@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/providers/application_provider.dart';
 import 'core/providers/auth_provider.dart';
 import 'core/providers/project_provider.dart';
+import 'core/providers/showcase_provider.dart';
 import 'core/providers/skill_test_provider.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/theme/app_theme.dart';
@@ -43,6 +44,15 @@ void main() async {
           update: (context, auth, previous) {
             previous?.updateToken(auth.token);
             return previous ?? SkillTestProvider();
+          },
+        ),
+
+        ChangeNotifierProxyProvider<AuthProvider, ShowcaseProvider>(
+          create: (context) => ShowcaseProvider(),
+          update: (context, auth, previousProvider) {
+            // AuthProvider'dan gelen token'ı ShowcaseProvider'a iletiyoruz.
+            previousProvider?.updateToken(auth.token);
+            return previousProvider ?? ShowcaseProvider();
           },
         ),
       ],
