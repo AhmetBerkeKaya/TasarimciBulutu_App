@@ -104,8 +104,8 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<List<Message>> _loadInitialMessages() async {
     final token = Provider.of<AuthProvider>(context, listen: false).token;
     if (token != null) {
-      await _apiService.markAsRead(otherUserId: widget.otherUser.id, token: token);
-      final messages = await _apiService.getChatHistory(otherUserId: widget.otherUser.id, token: token);
+      await _apiService.markAsRead(otherUserId: widget.otherUser.id);
+      final messages = await _apiService.getChatHistory(otherUserId: widget.otherUser.id);
       // Mesajlar yüklendikten hemen sonra en alta kaydır
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom(isAnimated: false));
       return messages;
@@ -116,7 +116,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _refreshMessages() async {
     final token = Provider.of<AuthProvider>(context, listen: false).token;
     if (token != null) {
-      final newMessages = await _apiService.getChatHistory(otherUserId: widget.otherUser.id, token: token);
+      final newMessages = await _apiService.getChatHistory(otherUserId: widget.otherUser.id);
       // Eğer yeni mesaj varsa ve ekranda bir değişiklik olacaksa, state'i güncelle
       if (mounted && newMessages.length != _messages.length) {
         setState(() {
@@ -136,7 +136,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final content = _messageController.text.trim();
     _messageController.clear();
 
-    final sentMessage = await _apiService.sendMessage(token: token, receiverId: widget.otherUser.id, content: content);
+    final sentMessage = await _apiService.sendMessage(receiverId: widget.otherUser.id, content: content);
 
     if (sentMessage != null) {
       setState(() {
@@ -164,7 +164,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
 
     if (confirmed == true && token != null) {
-      final success = await _apiService.deleteMessage(messageId: message.id, token: token);
+      final success = await _apiService.deleteMessage(messageId: message.id);
       if (success) {
         setState(() {
           _messages.remove(message);

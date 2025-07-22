@@ -1,112 +1,77 @@
-// lib/core/services/auth_service.dart
+// lib/core/services/auth_service.dart (YENİ HALİ)
 
-import 'dart:convert';
-
+import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' as http;
 
 import '../../data/models/enums.dart';
 import '../../data/models/user_model.dart';
+import 'dio_client.dart';
 
 class AuthService {
-  // Android emülatörü için localhost IP'si 10.0.2.2'dir.
-  // Fiziksel cihaz veya iOS simülatörü için kendi bilgisayarının IP adresini yazmalısın.
-  final String _baseUrl = "http://10.0.2.2:8000";
+  final Dio _dio = DioClient.instance.dio;
   final _storage = const FlutterSecureStorage();
 
-  // Kayıt olma fonksiyonu
   Future<User?> signup({
     required String name,
     required String email,
     required String password,
     required UserRole role,
-    required String phoneNumber, // <-- YENİ PARAMETRE
+    required String phoneNumber,
   }) async {
-    final url = Uri.parse('$_baseUrl/users/');
     try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
+      final response = await _dio.post(
+        '/users/', // Base URL zaten Dio'da tanımlı
+        data: {
           'email': email,
           'name': name,
           'password': password,
           'role': role.name,
-          'phone_number': phoneNumber, // <-- YENİ PARAMETRE
-        }),
+          'phone_number': phoneNumber,
+        },
       );
-
-      // --- DÜZELTME BURADA ---
-      // Hem 200 (OK) hem de 201 (Created) durumları başarıdır.
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseBody = json.decode(utf8.decode(response.bodyBytes));
-        return User.fromJson(responseBody);
-      } else {
-        final errorBody = json.decode(utf8.decode(response.bodyBytes));
-        print('Signup Error: ${response.statusCode} - ${errorBody['detail']}');
-        return null;
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return User.fromJson(response.data);
       }
-    } catch (e) {
-      print('Signup Exception: $e');
+      return null;
+    } on DioException catch (e) {
+      print('Signup DioException: ${e.response?.data}');
       return null;
     }
   }
 
   Future<String?> login(String email, String password) async {
-    final url = Uri.parse('$_baseUrl/token');
-    print('[AuthService] Login isteği atılıyor: $url');
     try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: {'username': email, 'password': password},
+      // Dio, form-urlencoded veriyi otomatik anlar.
+      final response = await _dio.post(
+        '/token',
+        data: {'username': email, 'password': password},
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
       );
 
-      print('[AuthService] Login yanıtı geldi: ${response.statusCode}');
-
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final token = data['access_token'];
+        final token = response.data['access_token'];
         await _storage.write(key: 'access_token', value: token);
-        print('[AuthService] Token başarıyla alındı ve saklandı.');
         return token;
-      } else {
-        print('[AuthService] Login HATA: ${response.statusCode} - ${response.body}');
-        return null;
       }
-    } catch (e) {
-      print('[AuthService] Login EXCEPTION: $e');
+      return null;
+    } on DioException catch (e) {
+      print('Login DioException: ${e.response?.data}');
       return null;
     }
   }
 
-  Future<User?> getMe(String token) async {
-    final url = Uri.parse('$_baseUrl/users/me');
-    print('[AuthService] getMe isteği atılıyor: $url');
-    print('[AuthService] Kullanılan Token (ilk 10 karakter): ${token.substring(0, 10)}...');
+  Future<User?> getMe() async {
+    // Token parametresine gerek kalmadı, Interceptor hallediyor!
     try {
-      final response = await http.get(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      print('[AuthService] getMe yanıtı geldi: ${response.statusCode}');
-      print('[AuthService] getMe yanıt BODY: ${response.body}');
-
+      final response = await _dio.get('/users/me');
       if (response.statusCode == 200) {
-        final responseBody = json.decode(utf8.decode(response.bodyBytes));
-        print('[AuthService] getMe JSON parse ediliyor...');
-        final user = User.fromJson(responseBody);
-        print('[AuthService] getMe başarıyla User modeline dönüştürüldü: ${user.name}');
-        return user;
-      } else {
-        return null;
+        return User.fromJson(response.data);
       }
-    } catch (e) {
-      print('[AuthService] getMe EXCEPTION: $e');
+      return null;
+    } on DioException catch (e) {
+      print('getMe DioException: ${e.response?.data}');
       return null;
     }
   }

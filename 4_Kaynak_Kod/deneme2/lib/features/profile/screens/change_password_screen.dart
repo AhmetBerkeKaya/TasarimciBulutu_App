@@ -26,7 +26,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       final success = await ApiService().changePassword(
         currentPassword: _currentPasswordController.text,
         newPassword: _newPasswordController.text,
-        token: token!,
       );
 
       if (!mounted) return;

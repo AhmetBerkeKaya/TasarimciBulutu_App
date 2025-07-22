@@ -39,7 +39,7 @@ class AuthProvider with ChangeNotifier {
     final token = await _authService.login(email, password);
     if (token != null) {
       _token = token;
-      final userProfile = await _authService.getMe(token);
+      final userProfile = await _authService.getMe();
       if (userProfile != null) {
         _user = userProfile;
         _isLoggedIn = true;
@@ -63,7 +63,7 @@ class AuthProvider with ChangeNotifier {
       return;
     }
 
-    final userProfile = await _authService.getMe(token);
+    final userProfile = await _authService.getMe();
     if (userProfile != null) {
       _user = userProfile;
       _token = token;
@@ -112,7 +112,7 @@ class AuthProvider with ChangeNotifier {
 
   Future<bool> updateProfile(Map<String, dynamic> data) async {
     if (_token == null) return false;
-    final updatedUser = await _apiService.updateMyProfile(data: data, token: _token!);
+    final updatedUser = await _apiService.updateMyProfile(data: data);
     if (updatedUser != null) {
       _user = updatedUser;
       notifyListeners();
@@ -123,7 +123,7 @@ class AuthProvider with ChangeNotifier {
 
   Future<bool> addSkillToUser(String skillId) async {
     if (_token == null) return false;
-    final updatedUser = await _apiService.addSkillToUser(skillId: skillId, token: _token!);
+    final updatedUser = await _apiService.addSkillToUser(skillId: skillId);
     if (updatedUser != null) {
       _user = updatedUser;
       notifyListeners();
@@ -134,7 +134,7 @@ class AuthProvider with ChangeNotifier {
 
   Future<bool> removeSkill(String skillId) async {
     if (_token == null) return false;
-    final updatedUser = await _apiService.removeSkillFromUser(skillId: skillId, token: _token!);
+    final updatedUser = await _apiService.removeSkillFromUser(skillId: skillId);
     if (updatedUser != null) {
       _user = updatedUser;
       notifyListeners();
@@ -150,11 +150,10 @@ class AuthProvider with ChangeNotifier {
 
     final updatedUserFromPut = await _apiService.updateUserPicture(
       imageFile: imageFile,
-      token: _token!,
     );
 
     if (updatedUserFromPut != null) {
-      final finalUpdatedUser = await _authService.getMe(_token!);
+      final finalUpdatedUser = await _authService.getMe();
       if (finalUpdatedUser != null) {
         _user = finalUpdatedUser;
       }
@@ -167,9 +166,9 @@ class AuthProvider with ChangeNotifier {
 
   Future<bool> addWorkExperience(Map<String, dynamic> data) async {
     if (_token == null) return false;
-    final newExperience = await _apiService.addWorkExperience(data: data, token: _token!);
+    final newExperience = await _apiService.addWorkExperience(data: data);
     if (newExperience != null) {
-      final updatedUser = await _authService.getMe(_token!);
+      final updatedUser = await _authService.getMe();
       if (updatedUser != null) {
         _user = updatedUser;
         notifyListeners();
@@ -187,7 +186,6 @@ class AuthProvider with ChangeNotifier {
     final updatedExperience = await _apiService.updateWorkExperience(
       experienceId: experienceId,
       data: data,
-      token: _token!,
     );
 
     if (updatedExperience != null) {
@@ -203,7 +201,7 @@ class AuthProvider with ChangeNotifier {
 
   Future<bool> deleteWorkExperience(String experienceId) async {
     if (_token == null) return false;
-    final success = await _apiService.deleteWorkExperience(experienceId: experienceId, token: _token!);
+    final success = await _apiService.deleteWorkExperience(experienceId: experienceId);
     if (success) {
       _user?.workExperiences.removeWhere((exp) => exp.id == experienceId);
       notifyListeners();
@@ -221,7 +219,6 @@ class AuthProvider with ChangeNotifier {
       title: title,
       description: description,
       imageFile: file,
-      token: _token!,
     );
     if (newItem != null && _user != null) {
       _user!.portfolioItems.add(newItem);
@@ -243,7 +240,6 @@ class AuthProvider with ChangeNotifier {
       title: title,
       description: description,
       newFile: newFile,
-      token: _token!,
     );
     if (updatedItem != null) {
       final index = _user?.portfolioItems.indexWhere((item) => item.id == itemId);
@@ -258,7 +254,7 @@ class AuthProvider with ChangeNotifier {
 
   Future<bool> deletePortfolioItem(String itemId) async {
     if (_token == null) return false;
-    final success = await _apiService.deletePortfolioItem(itemId: itemId, token: _token!);
+    final success = await _apiService.deletePortfolioItem(itemId: itemId);
     if (success) {
       _user?.portfolioItems.removeWhere((item) => item.id == itemId);
       notifyListeners();
