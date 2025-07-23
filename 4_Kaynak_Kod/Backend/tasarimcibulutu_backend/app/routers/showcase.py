@@ -105,11 +105,6 @@ def unlike_a_post(request: Request, post_id: uuid.UUID, db: Session = Depends(ge
         raise HTTPException(status_code=404, detail="Like not found")
     return
 
-@router.post("/posts/{post_id}/comments", response_model=schemas.showcase.Comment, status_code=status.HTTP_201_CREATED)
-@limiter.limit("30/hour")
-def create_a_comment(request: Request, post_id: uuid.UUID, comment_data: schemas.showcase.CommentBase, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    comment_create_schema = schemas.showcase.CommentCreate(content=comment_data.content, post_id=post_id)
-    return crud.showcase.create_comment(db, comment=comment_create_schema, user_id=current_user.id)
 
 @router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("20/hour")
@@ -117,4 +112,53 @@ def delete_a_comment(request: Request, comment_id: uuid.UUID, db: Session = Depe
     deleted_comment = crud.showcase.delete_comment(db, comment_id=comment_id, user_id=current_user.id)
     if not deleted_comment:
         raise HTTPException(status_code=403, detail="Comment not found or you don't have permission to delete it")
+    return
+
+
+@router.post("/comments/{comment_id}/like", response_model=schemas.showcase.CommentLike, status_code=status.HTTP_201_CREATED)
+@limiter.limit("100/minute")
+def like_a_comment(
+    request: Request,
+    comment_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Bir yorumu beğenir."""
+    like = crud.showcase.like_comment(db, comment_id=comment_id, user_id=current_user.id)
+    if not like:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    return like
+
+@router.post("/posts/{post_id}/comments", response_model=schemas.showcase.Comment, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/hour")
+def create_a_comment(
+    request: Request,
+    post_id: uuid.UUID,
+    comment_data: schemas.showcase.CommentCreateBody,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Bir gönderiye yeni bir yorum veya yoruma yanıt ekler."""
+    
+    comment_create_schema = schemas.showcase.CommentCreate(
+        content=comment_data.content,
+        post_id=post_id,
+        parent_comment_id=comment_data.parent_comment_id
+    )
+    return crud.showcase.create_comment(db, comment=comment_create_schema, user_id=current_user.id)
+
+
+
+@router.delete("/comments/{comment_id}/like", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("100/minute")
+def unlike_a_comment(
+    request: Request,
+    comment_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """Bir yorumdaki beğeniyi geri alır."""
+    success = crud.showcase.unlike_comment(db, comment_id=comment_id, user_id=current_user.id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Like not found")
     return

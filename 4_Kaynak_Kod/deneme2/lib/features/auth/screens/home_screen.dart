@@ -12,8 +12,8 @@ import '../../messages/screens/message_list_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../project/screens/project_list_screen.dart';
 import '../../showcase/screens/showcase_feed_screen.dart';
-import '../../activity/screens/activity_screen.dart'; // Yeni Activity ekranını import et
-import '../../project/screens/create_project_screen.dart'; // Proje oluşturma ekranını import et
+import '../../activity/screens/activity_screen.dart';
+import '../../project/screens/create_project_screen.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -43,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
     BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profil'),
   ];
 
-  // --- FİRMA (CLIENT) İÇİN NAVİGASYON (4 MADDE + FAB) ---
+  // --- FİRMA (CLIENT) İÇİN NAVİGASYON (4 MADDE) ---
   static const List<Widget> _clientPages = [
     DashboardScreen(),        // 1. Panelim (Kendi Projeleri)
     ShowcaseFeedScreen(),     // 2. Vitrini Keşfet (Tasarımcı Bul)
@@ -83,22 +83,13 @@ class _HomeScreenState extends State<HomeScreen> {
         children: pages,
       ),
       bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed, // 4+ item için zorunlu ve en iyi görünüm
+        type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         items: navItems,
       ),
-      // Sadece firmalar için "Proje Oluştur" butonu
-      floatingActionButton: isClient
-          ? FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const CreateProjectScreen()),
-          );
-        },
-        child: const Icon(Icons.add),
-      )
-          : null,
+      // --- DÜZELTME: FloatingActionButton buradan tamamen kaldırıldı ---
+      floatingActionButton: null,
     );
   }
 }

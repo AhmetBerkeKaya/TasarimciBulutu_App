@@ -50,8 +50,30 @@ def unlike_post(db: Session, post_id: uuid.UUID, user_id: uuid.UUID) -> bool:
     if db_like: db.delete(db_like); db.commit(); return True
     return False
 def create_comment(db: Session, comment: schemas.showcase.CommentCreate, user_id: uuid.UUID) -> models.showcase.PostComment:
-    db_comment = models.showcase.PostComment(content=comment.content, post_id=comment.post_id, parent_comment_id=comment.parent_comment_id, user_id=user_id)
-    db.add(db_comment); db.commit(); db.refresh(db_comment); return db_comment
+    
+    # --- DEBUG 2: CRUD fonksiyonuna gelen veri ne? ---
+    print("\n--- DEBUG 2: create_comment CRUD fonksiyonuna gelen veri ---")
+    print(f"Schema (comment): {comment.model_dump_json(indent=2)}")
+    print("----------------------------------------------------------\n")
+
+    db_comment = models.showcase.PostComment(
+        content=comment.content,
+        post_id=comment.post_id,
+        parent_comment_id=comment.parent_comment_id,
+        user_id=user_id
+    )
+    
+    # --- DEBUG 3: Veritabanına KAYDETMEDEN ÖNCE modelin durumu ne? ---
+    print("\n--- DEBUG 3: DB'ye KAYDETMEDEN ÖNCE SQLAlchemy modelinin durumu ---")
+    print(f"db_comment.content: {db_comment.content}")
+    print(f"db_comment.post_id: {db_comment.post_id}")
+    print(f"db_comment.parent_comment_id: {db_comment.parent_comment_id}") # BU ALANIN DOLU OLMASI LAZIM
+    print("-------------------------------------------------------------------\n")
+
+    db.add(db_comment)
+    db.commit()
+    db.refresh(db_comment)
+    return db_comment
 def get_comments_for_post(db: Session, post_id: uuid.UUID) -> list[models.showcase.PostComment]:
     return db.query(models.showcase.PostComment).filter(models.showcase.PostComment.post_id == post_id).order_by(models.showcase.PostComment.created_at.asc()).all()
 def delete_comment(db: Session, comment_id: uuid.UUID, user_id: uuid.UUID) -> models.showcase.PostComment | None:
@@ -59,3 +81,29 @@ def delete_comment(db: Session, comment_id: uuid.UUID, user_id: uuid.UUID) -> mo
     if db_comment and (db_comment.user_id == user_id or db_comment.post.user_id == user_id):
         db.delete(db_comment); db.commit(); return db_comment
     return None
+
+def get_comment(db: Session, comment_id: uuid.UUID) -> models.showcase.PostComment | None:
+    """Tek bir yorumu ID ile getirir."""
+    return db.query(models.showcase.PostComment).filter(models.showcase.PostComment.id == comment_id).first()
+
+def like_comment(db: Session, comment_id: uuid.UUID, user_id: uuid.UUID) -> models.showcase.CommentLike | None:
+    if not get_comment(db, comment_id):
+        return None
+    
+    db_like = db.query(models.showcase.CommentLike).filter_by(comment_id=comment_id, user_id=user_id).first()
+    if db_like:
+        return db_like
+        
+    new_like = models.showcase.CommentLike(comment_id=comment_id, user_id=user_id)
+    db.add(new_like)
+    db.commit()
+    db.refresh(new_like)
+    return new_like
+
+def unlike_comment(db: Session, comment_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    db_like = db.query(models.showcase.CommentLike).filter_by(comment_id=comment_id, user_id=user_id).first()
+    if db_like:
+        db.delete(db_like)
+        db.commit()
+        return True
+    return False

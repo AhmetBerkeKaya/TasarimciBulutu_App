@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../data/models/comment_model.dart';
 import '../../data/models/showcase_post_model.dart';
 import '../services/api_service.dart';
 
@@ -9,11 +10,8 @@ enum ShowcaseState { initial, loading, loaded, loadingMore, error }
 
 class ShowcaseProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
-
-  // --- YENİ: Sayfa başına gönderi sayısı için bir sabit tanımlıyoruz ---
   static const int _pageSize = 20;
 
-  // State variables
   List<ShowcasePost> _posts = [];
   ShowcaseState _state = ShowcaseState.initial;
   String? _errorMessage;
@@ -21,7 +19,6 @@ class ShowcaseProvider with ChangeNotifier {
   bool _hasMorePosts = true;
   bool _isCreatingPost = false;
 
-  // Getters
   List<ShowcasePost> get posts => _posts;
   ShowcaseState get state => _state;
   String? get errorMessage => _errorMessage;
@@ -34,7 +31,6 @@ class ShowcaseProvider with ChangeNotifier {
     }
   }
 
-  /// İlk gönderi grubunu çeker.
   Future<void> fetchPosts() async {
     if (_state == ShowcaseState.loading) return;
     _state = ShowcaseState.loading;
@@ -42,11 +38,8 @@ class ShowcaseProvider with ChangeNotifier {
 
     try {
       _currentPage = 0;
-      // --- GÜNCELLENEN MANTIK ---
       final newPosts = await _apiService.getShowcasePosts(page: _currentPage, limit: _pageSize);
       _posts = newPosts;
-      // Eğer backend'den gelen gönderi sayısı, istediğimiz sayıya eşitse, devamı olabilir.
-      // Eğer daha azsa, bu son sayfa demektir.
       _hasMorePosts = newPosts.length == _pageSize;
       _state = ShowcaseState.loaded;
     } catch (e) {
@@ -57,7 +50,6 @@ class ShowcaseProvider with ChangeNotifier {
     }
   }
 
-  /// Daha fazla gönderi çeker (sonsuz kaydırma için).
   Future<void> fetchMorePosts() async {
     if (_state == ShowcaseState.loadingMore || !_hasMorePosts) return;
     _state = ShowcaseState.loadingMore;
@@ -65,14 +57,10 @@ class ShowcaseProvider with ChangeNotifier {
 
     try {
       _currentPage++;
-      // --- GÜNCELLENEN MANTIK ---
       final newPosts = await _apiService.getShowcasePosts(page: _currentPage, limit: _pageSize);
-
       if (newPosts.length < _pageSize) {
-        // Eğer gelen gönderi sayısı istediğimizden azsa, bu kesinlikle son sayfadır.
         _hasMorePosts = false;
       }
-
       _posts.addAll(newPosts);
       _state = ShowcaseState.loaded;
     } catch (e) {
@@ -83,12 +71,7 @@ class ShowcaseProvider with ChangeNotifier {
     }
   }
 
-  /// Yeni bir vitrin gönderisi oluşturur. Dosya varsa önce onu S3'e yükler.
-  Future<bool> createPost({
-    required String title,
-    String? description,
-    File? fileToUpload,
-  }) async {
+  Future<bool> createPost({ required String title, String? description, File? fileToUpload }) async {
     _isCreatingPost = true;
     _errorMessage = null;
     notifyListeners();
@@ -104,9 +87,9 @@ class ShowcaseProvider with ChangeNotifier {
           presignedData: presignedData,
           file: fileToUpload,
         );
-        if (!uploadSuccess) throw Exception("Dosya yüklenemedi.");
+        if (!uploadSuccess) throw Exception("Dosya S3'e yüklenemedi.");
 
-        finalFileUrl = '${presignedData.url}${presignedData.fields['key']}';
+        finalFileUrl = presignedData.finalFileUrl;
       }
 
       final newPost = await _apiService.createShowcasePost(
@@ -130,8 +113,26 @@ class ShowcaseProvider with ChangeNotifier {
       return false;
     }
   }
+  Future<bool> deletePost(String postId) async {
+    // Optimistic UI: Kullanıcıyı bekletmemek için gönderiyi hemen listeden kaldır.
+    final postIndex = _posts.indexWhere((p) => p.id == postId);
+    if (postIndex == -1) return false;
 
-  /// Bir gönderiyi beğenir veya beğeniyi geri alır.
+    final postToRemove = _posts.removeAt(postIndex);
+    notifyListeners();
+
+    // API'ye silme isteği gönder.
+    final success = await _apiService.deleteShowcasePost(postId: postId);
+
+    // Eğer API isteği başarısız olursa, silinen gönderiyi geri ekle ve hata göster.
+    if (!success) {
+      _posts.insert(postIndex, postToRemove);
+      _errorMessage = "Gönderi silinemedi. Lütfen tekrar deneyin.";
+      notifyListeners();
+    }
+
+    return success;
+  }
   Future<void> toggleLike(String postId, String currentUserId) async {
     final postIndex = _posts.indexWhere((p) => p.id == postId);
     if (postIndex == -1) return;
@@ -163,14 +164,21 @@ class ShowcaseProvider with ChangeNotifier {
     }
   }
 
-  /// Bir gönderiye yorum ekler.
-  Future<bool> addComment(String postId, String content) async {
+  Future<bool> addComment(String postId, String content, {String? parentCommentId}) async {
     try {
-      final newComment = await _apiService.addComment(postId: postId, content: content);
+      final newComment = await _apiService.addComment(
+        postId: postId,
+        content: content,
+        parentCommentId: parentCommentId,
+      );
       if (newComment != null) {
         final postIndex = _posts.indexWhere((p) => p.id == postId);
         if (postIndex != -1) {
-          _posts[postIndex].comments.insert(0, newComment);
+          if (parentCommentId != null) {
+            _findAndAddReply(_posts[postIndex].comments, parentCommentId, newComment);
+          } else {
+            _posts[postIndex].comments.insert(0, newComment);
+          }
           notifyListeners();
         }
         return true;
@@ -180,5 +188,88 @@ class ShowcaseProvider with ChangeNotifier {
       print("Yorum eklenemedi: $e");
       return false;
     }
+  }
+
+  void _findAndAddReply(List<Comment> comments, String parentId, Comment reply) {
+    for (var comment in comments) {
+      if (comment.id == parentId) {
+        comment.replies.insert(0, reply);
+        return;
+      }
+      if (comment.replies.isNotEmpty) {
+        _findAndAddReply(comment.replies, parentId, reply);
+      }
+    }
+  }
+
+  Future<void> toggleCommentLike(String postId, String commentId, String currentUserId) async {
+    final postIndex = _posts.indexWhere((p) => p.id == postId);
+    if (postIndex == -1) return;
+
+    Comment? targetComment = findComment(_posts[postIndex].comments, commentId); // DÜZELTME
+    if (targetComment == null) return;
+
+    final isLiked = targetComment.likes.any((like) => like.userId == currentUserId);
+
+    if (isLiked) {
+      targetComment.likes.removeWhere((like) => like.userId == currentUserId);
+    } else {
+      targetComment.likes.add(CommentLike(userId: currentUserId, commentId: commentId));
+    }
+    notifyListeners();
+
+    try {
+      if (isLiked) {
+        await _apiService.unlikeComment(commentId: commentId);
+      } else {
+        await _apiService.likeComment(commentId: commentId);
+      }
+    } catch (e) {
+      if (isLiked) {
+        targetComment.likes.add(CommentLike(userId: currentUserId, commentId: commentId));
+      } else {
+        targetComment.likes.removeWhere((like) => like.userId == currentUserId);
+      }
+      notifyListeners();
+    }
+  }
+
+  // --- DÜZELTME: Fonksiyonu public hale getirdik ---
+  Comment? findComment(List<Comment> comments, String commentId) {
+    for (var comment in comments) {
+      if (comment.id == commentId) return comment;
+      final foundInReply = findComment(comment.replies, commentId);
+      if (foundInReply != null) return foundInReply;
+    }
+    return null;
+  }
+
+  Future<bool> deleteComment(String postId, String commentId) async {
+    final success = await _apiService.deleteComment(commentId: commentId);
+    if (success) {
+      final postIndex = _posts.indexWhere((p) => p.id == postId);
+      if (postIndex != -1) {
+        final removed = _findAndRemoveComment(_posts[postIndex].comments, commentId);
+        if (removed) {
+          notifyListeners();
+        }
+      }
+    }
+    return success;
+  }
+
+  bool _findAndRemoveComment(List<Comment> comments, String commentId) {
+    for (int i = 0; i < comments.length; i++) {
+      if (comments[i].id == commentId) {
+        comments.removeAt(i);
+        return true;
+      }
+      if (comments[i].replies.isNotEmpty) {
+        if (_findAndRemoveComment(comments[i].replies, commentId)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 }

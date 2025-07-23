@@ -116,6 +116,16 @@ class ApiService {
     }
   }
 
+  Future<bool> deleteShowcasePost({required String postId}) async {
+    try {
+      final response = await _dio.delete('/showcase/posts/$postId');
+      // Başarılı silme işleminde backend 204 No Content döner.
+      return response.statusCode == 204;
+    } on DioException {
+      return false;
+    }
+  }
+
 
   Future<bool> likePost({required String postId}) async {
     try {
@@ -135,19 +145,52 @@ class ApiService {
     }
   }
 
+  // --- GÜNCELLENEN YORUM FONKSİYONU ---
   Future<Comment?> addComment({
     required String postId,
     required String content,
+    String? parentCommentId, // Yanıt için yeni parametre
   }) async {
     try {
       final response = await _dio.post(
         '/showcase/posts/$postId/comments',
-        data: {'content': content},
+        data: {
+          'content': content,
+          'parent_comment_id': parentCommentId, // Yeni alan
+        },
       );
       return Comment.fromJson(response.data);
     } on DioException catch (e) {
       print('addComment DioException: ${e.response?.data}');
       return null;
+    }
+  }
+
+  // --- YENİ YORUM ETKİLEŞİM FONKSİYONLARI ---
+  Future<bool> likeComment({required String commentId}) async {
+    try {
+      final response = await _dio.post('/showcase/comments/$commentId/like');
+      return response.statusCode == 201;
+    } on DioException {
+      return false;
+    }
+  }
+
+  Future<bool> unlikeComment({required String commentId}) async {
+    try {
+      final response = await _dio.delete('/showcase/comments/$commentId/like');
+      return response.statusCode == 204;
+    } on DioException {
+      return false;
+    }
+  }
+
+  Future<bool> deleteComment({required String commentId}) async {
+    try {
+      final response = await _dio.delete('/showcase/comments/$commentId');
+      return response.statusCode == 204;
+    } on DioException {
+      return false;
     }
   }
 

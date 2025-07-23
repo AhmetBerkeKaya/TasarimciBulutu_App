@@ -48,3 +48,4 @@ class User(Base):
     showcase_posts = relationship("ShowcasePost", back_populates="owner", cascade="all, delete-orphan")
     likes = relationship("PostLike", back_populates="user", cascade="all, delete-orphan")
     comments = relationship("PostComment", back_populates="author", cascade="all, delete-orphan")
+    comment_likes = relationship("CommentLike", back_populates="user", cascade="all, delete-orphan")
