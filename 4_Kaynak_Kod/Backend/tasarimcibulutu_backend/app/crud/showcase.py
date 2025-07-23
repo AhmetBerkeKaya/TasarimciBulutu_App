@@ -4,13 +4,22 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 import uuid
 
+from urllib.parse import urljoin
+from app.config import settings
+
 def create_showcase_post(db: Session, post: schemas.showcase.ShowcasePostCreate, user_id: uuid.UUID) -> models.showcase.ShowcasePost:
-    # GÜNCELLENDİ: file_url ve thumbnail_url'i de alıyoruz.
+    # Eğer mobil taraf URL göndermiyorsa backend'te oluştur
+    if post.file_url:
+        base_url = f"https://{settings.AWS_S3_BUCKET_NAME}.s3.{settings.AWS_REGION}.amazonaws.com/"
+        corrected_file_url = urljoin(base_url, post.file_url) if not post.file_url.startswith("http") else post.file_url
+    else:
+        corrected_file_url = None
+
     db_post = models.showcase.ShowcasePost(
         title=post.title,
         description=post.description,
-        file_url=post.file_url,
-        thumbnail_url=post.thumbnail_url,
+        file_url=corrected_file_url,
+        thumbnail_url=None,
         user_id=user_id
     )
     db.add(db_post)
@@ -31,7 +40,7 @@ def delete_showcase_post(db: Session, post_id: uuid.UUID, user_id: uuid.UUID) ->
         return db_post
     return None
 def like_post(db: Session, post_id: uuid.UUID, user_id: uuid.UUID) -> models.showcase.PostLike | None:
-    db_post = get_showcase_post(db, post_id);
+    db_post = get_showcase_post(db, post_id)
     if not db_post: return None
     db_like = db.query(models.showcase.PostLike).filter(models.showcase.PostLike.post_id == post_id, models.showcase.PostLike.user_id == user_id).first()
     if db_like: return db_like

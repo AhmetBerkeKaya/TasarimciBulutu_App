@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from typing import List
 import mimetypes
+from urllib.parse import urljoin
 
 from app import crud, schemas, models
 from app.dependencies import get_db, get_current_user
@@ -30,7 +31,7 @@ def create_upload_url(
     unique_filename = f"users/{current_user.id}/posts/{uuid.uuid4()}{file_extension}"
     
     conditions = [
-        ["content-length-range", 1, 15728640], # Limiti 15MB'a çıkaralım
+        ["content-length-range", 1, 15728640],
         ["starts-with", "$Content-Type", "image/"]
     ]
 
@@ -43,17 +44,14 @@ def create_upload_url(
     if response_data is None:
         raise HTTPException(status_code=500, detail="Could not generate upload URL")
         
-    correct_s3_url = f"https://{settings.AWS_S3_BUCKET_NAME}.s3.{settings.AWS_REGION}.amazonaws.com"
-    final_url = f"{correct_s3_url}/{unique_filename}"
-
-    # Değişkenleri kontrol etmek için debug print'leri ekleyelim
-    print("--- URL OLUŞTURMA DEBUG ---")
-    print(f"  > Correct S3 URL: {correct_s3_url}")
-    print(f"  > Unique Filename: {unique_filename}")
-    print(f"  > Final URL (oluşturulan): {final_url}")
-    print("----------------------------")
-
-    response_data['url'] = correct_s3_url
+    # --- SON DÜZELTME: URL BİRLEŞTİRME ---
+    # URL'in sonunda / olduğundan emin oluyoruz.
+    base_url = f"https://{settings.AWS_S3_BUCKET_NAME}.s3.{settings.AWS_REGION}.amazonaws.com/"
+    
+    # Python'un en güvenli yoluyla birleştiriyoruz.
+    final_url = urljoin(base_url, unique_filename)
+    
+    response_data['url'] = base_url # Yükleme adresi / olmadan olabilir
     response_data['final_file_url'] = final_url
         
     return response_data

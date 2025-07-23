@@ -12,11 +12,28 @@ class PostCard extends StatelessWidget {
   final ShowcasePost post;
 
   const PostCard({super.key, required this.post});
+// --- YENİ SAVUNMA FONKSİYONU ---
+  String _getCorrectImageUrl(String? url) {
+    if (url == null || url.isEmpty) return '';
 
+    const marker = '.amazonaws.com';
+    final index = url.indexOf(marker);
+
+    if (index != -1) {
+      final nextCharIndex = index + marker.length;
+      if (nextCharIndex < url.length && url[nextCharIndex] != '/') {
+        // Eğer .com'dan sonra / yoksa, onu buraya zorla ekle.
+        return url.substring(0, nextCharIndex) + '/' + url.substring(nextCharIndex);
+      }
+    }
+    return url;
+  }
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+    final correctedFileUrl = _getCorrectImageUrl(post.fileUrl);
+
     timeago.setLocaleMessages('tr', timeago.TrMessages());
 
     final currentUserId = Provider
@@ -73,12 +90,12 @@ class PostCard extends StatelessWidget {
             ],
 
             // --- GÜNCELLENEN GÖRSEL BÖLÜMÜ ---
-            if (post.fileUrl != null && post.fileUrl!.isNotEmpty) ...[
+            if (correctedFileUrl.isNotEmpty) ...[
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(8.0),
                 child: Image.network(
-                  post.fileUrl!,
+                  correctedFileUrl,
                   width: double.infinity,
                   height: 250,
                   fit: BoxFit.cover,
