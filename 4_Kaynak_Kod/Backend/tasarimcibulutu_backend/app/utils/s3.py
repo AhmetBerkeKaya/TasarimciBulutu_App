@@ -4,7 +4,8 @@ import boto3
 from botocore.exceptions import ClientError
 from app.config import settings
 
-def create_presigned_post_url(bucket_name: str, object_name: str, fields=None, conditions=None, expiration=3600):
+# --- DÜZELTME: Fonksiyon parametresinin adı 'expiration' -> 'expires_in' olarak değiştirildi ---
+def create_presigned_post_url(bucket_name: str, object_name: str, fields=None, conditions=None, expires_in=3600):
     """
     Flutter'dan doğrudan S3'e dosya yüklemek için bir Presigned URL ve gerekli alanları oluşturur.
     """
@@ -23,7 +24,8 @@ def create_presigned_post_url(bucket_name: str, object_name: str, fields=None, c
             Key=object_name,
             Fields=fields,
             Conditions=conditions,
-            ExpiresIn=expiration
+            # --- DÜZELTME: Boto3'e doğru parametre adı olan 'expires_in' geçiriliyor ---
+            ExpiresIn=expires_in
         )
         print(f"✅ Presigned URL başarıyla oluşturuldu. Alanlar: {response['fields']}")
     except ClientError as e:

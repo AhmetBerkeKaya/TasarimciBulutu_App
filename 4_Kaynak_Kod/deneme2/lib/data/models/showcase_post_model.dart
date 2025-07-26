@@ -3,8 +3,6 @@
 import 'comment_model.dart';
 import 'user_summary_model.dart';
 
-// Beğeni verisini temsil etmek için basit bir sınıf.
-// Backend'den gelen JSON'a göre bunu daha da detaylandırabiliriz.
 class PostLike {
   final String userId;
   final String postId;
@@ -25,6 +23,8 @@ class ShowcasePost {
   final String? description;
   final String? fileUrl;
   final String? thumbnailUrl;
+  final String? modelUrl;
+  final String? modelFormat;
   final DateTime createdAt;
   final DateTime updatedAt;
   final UserSummary owner;
@@ -37,6 +37,8 @@ class ShowcasePost {
     this.description,
     this.fileUrl,
     this.thumbnailUrl,
+    this.modelUrl,
+    this.modelFormat,
     required this.createdAt,
     required this.updatedAt,
     required this.owner,
@@ -51,6 +53,8 @@ class ShowcasePost {
       description: json['description'],
       fileUrl: json['file_url'],
       thumbnailUrl: json['thumbnail_url'],
+      modelUrl: json['model_url'],
+      modelFormat: json['model_format'],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       owner: UserSummary.fromJson(json['owner']),

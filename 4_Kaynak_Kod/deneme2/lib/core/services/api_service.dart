@@ -24,14 +24,16 @@ class PresignedUrlResponse {
   final String url;
   final Map<String, dynamic> fields;
   final String finalFileUrl;
+  final String? fileFormat;
 
-  PresignedUrlResponse({required this.url, required this.fields, required this.finalFileUrl});
+  PresignedUrlResponse({required this.url, required this.fields, required this.finalFileUrl, required this.fileFormat});
 
   factory PresignedUrlResponse.fromJson(Map<String, dynamic> json) {
     return PresignedUrlResponse(
       url: json['url'],
       fields: Map<String, dynamic>.from(json['fields']),
       finalFileUrl: json['final_file_url'],
+      fileFormat: json['file_format'],
     );
   }
 }
@@ -39,9 +41,6 @@ class PresignedUrlResponse {
 
 class ApiService {
   final Dio _dio = DioClient.instance.dio;
-
-  // Fonksiyonlardan 'token' parametrelerinin kalktığına dikkat et!
-  // Interceptor'lar sayesinde artık onlara ihtiyacımız yok.
 
   Future<List<ShowcasePost>> getShowcasePosts({int page = 0, int limit = 20}) async {
     try {
@@ -58,13 +57,20 @@ class ApiService {
     }
   }
 
-  Future<PresignedUrlResponse?> getPresignedUploadUrl(File file) async {
+  Future<PresignedUrlResponse?> getPresignedUploadUrl({
+    required File file,
+    required String fileCategory,
+  }) async {
     try {
       final fileName = file.path.split('/').last;
       final contentType = lookupMimeType(file.path) ?? 'application/octet-stream';
       final response = await _dio.post(
         '/showcase/upload-url',
-        data: {'filename': fileName, 'content_type': contentType},
+        data: {
+          'filename': fileName,
+          'content_type': contentType,
+          'file_category': fileCategory,
+        },
       );
       return PresignedUrlResponse.fromJson(response.data);
     } on DioException catch (e) {
@@ -80,10 +86,8 @@ class ApiService {
     try {
       final contentType = lookupMimeType(file.path) ?? 'application/octet-stream';
 
-      // FormData'yı S3'ün beklediği SÖZLEŞMEYE %100 UYGUN şekilde oluşturuyoruz.
       final formData = FormData.fromMap({
         ...presignedData.fields,
-        // S3'ün hata mesajında istediği eksik alan tam olarak buydu:
         'Content-Type': contentType,
         'file': await MultipartFile.fromFile(file.path),
       });
@@ -91,7 +95,6 @@ class ApiService {
       final s3Dio = Dio();
       final response = await s3Dio.post(presignedData.url, data: formData);
 
-      // Başarılı yükleme durumunda S3 204 No Content döner.
       return response.statusCode == 204;
     } catch (e) {
       print('❌ S3 yükleme hatası: $e');
@@ -106,9 +109,24 @@ class ApiService {
   }
 
 
-  Future<ShowcasePost?> createShowcasePost({ required String title, String? description, String? fileUrl }) async {
+  Future<ShowcasePost?> createShowcasePost({
+    required String title,
+    String? description,
+    String? fileUrl,
+    String? modelUrl,
+    String? modelFormat,
+  }) async {
     try {
-      final response = await _dio.post('/showcase/posts', data: { 'title': title, 'description': description, 'file_url': fileUrl, });
+      final response = await _dio.post(
+        '/showcase/posts',
+        data: {
+          'title': title,
+          'description': description,
+          'file_url': fileUrl,
+          'model_url': modelUrl,       // Yeni alan
+          'model_format': modelFormat, // Yeni alan
+        },
+      );
       return ShowcasePost.fromJson(response.data);
     } on DioException catch (e) {
       print('createShowcasePost DioException: ${e.response?.data}');

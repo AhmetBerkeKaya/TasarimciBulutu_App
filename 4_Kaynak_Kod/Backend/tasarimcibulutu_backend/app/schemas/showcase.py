@@ -1,14 +1,13 @@
-# app/schemas/showcase.py
+# app/schemas/showcase.py DOSYASININ YENİ HALİ
 
 import uuid
-from pydantic import BaseModel, ConfigDict
-from typing import List, Optional
+from pydantic import BaseModel, ConfigDict, Field
+from typing import List, Optional, Literal
 from datetime import datetime
 from .user import UserSummary
 
 class CommentCreateBody(BaseModel):
     content: str
-    # --- NİHAİ DÜZELTME: Veri tipini UUID yerine string olarak kabul et ---
     parent_comment_id: Optional[str] = None
 
 class CommentLike(BaseModel):
@@ -21,7 +20,7 @@ class CommentBase(BaseModel):
 
 class CommentCreate(CommentBase):
     post_id: uuid.UUID
-    parent_comment_id: Optional[str] = None # Burayı da string yapıyoruz
+    parent_comment_id: Optional[str] = None
 
 class Comment(CommentBase):
     id: uuid.UUID
@@ -47,6 +46,8 @@ class ShowcasePost(BaseModel):
     updated_at: datetime
     file_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
+    model_url: Optional[str] = None
+    model_format: Optional[str] = None
     owner: UserSummary
     likes: List[PostLike] = []
     comments: List[Comment] = []
@@ -56,11 +57,13 @@ class PresignedUrlResponse(BaseModel):
     url: str
     fields: dict
     final_file_url: str
+    file_format: Optional[str] = None 
 
 class PresignedUrlRequest(BaseModel):
     filename: str
     content_type: str
-    
+    file_category: Literal['image', 'model'] 
+
 class ShowcasePostBase(BaseModel):
     title: str
     description: Optional[str] = None
@@ -70,6 +73,8 @@ class ShowcasePostCreate(BaseModel):
     description: Optional[str] = None
     file_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
+    model_url: Optional[str] = None
+    model_format: Optional[str] = None
 
 class ShowcasePostUpdate(ShowcasePostBase):
     pass

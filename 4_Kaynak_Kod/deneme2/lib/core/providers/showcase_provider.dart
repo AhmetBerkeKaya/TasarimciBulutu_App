@@ -32,6 +32,7 @@ class ShowcaseProvider with ChangeNotifier {
   }
 
   Future<void> fetchPosts() async {
+    // ... içerik aynı
     if (_state == ShowcaseState.loading) return;
     _state = ShowcaseState.loading;
     notifyListeners();
@@ -51,6 +52,7 @@ class ShowcaseProvider with ChangeNotifier {
   }
 
   Future<void> fetchMorePosts() async {
+    // ... içerik aynı
     if (_state == ShowcaseState.loadingMore || !_hasMorePosts) return;
     _state = ShowcaseState.loadingMore;
     notifyListeners();
@@ -71,60 +73,111 @@ class ShowcaseProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> createPost({ required String title, String? description, File? fileToUpload }) async {
+  // --- GÜNCELLENEN FONKSİYON ---
+  Future<bool> createPost({
+    required String title,
+    String? description,
+    File? imageFile,
+    File? modelFile,
+  }) async {
     _isCreatingPost = true;
     _errorMessage = null;
     notifyListeners();
 
-    String? finalFileUrl;
+    String? finalImageUrl;
+    String? finalModelUrl;
+    String? modelFormat;
 
     try {
-      if (fileToUpload != null) {
-        final presignedData = await _apiService.getPresignedUploadUrl(fileToUpload);
-        if (presignedData == null) throw Exception("Yükleme adresi alınamadı.");
-
-        final uploadSuccess = await _apiService.uploadFileToS3(
-          presignedData: presignedData,
-          file: fileToUpload,
+      // 1. Adım: Resim dosyasını yükle (varsa)
+      if (imageFile != null) {
+        print("🔍 Adım 1: Görsel yükleme başlıyor...");
+        final presignedData = await _apiService.getPresignedUploadUrl(
+          file: imageFile,
+          fileCategory: 'image',
         );
-        if (!uploadSuccess) throw Exception("Dosya S3'e yüklenemedi.");
-
-        finalFileUrl = presignedData.finalFileUrl;
+        if (presignedData != null) {
+          final success = await _apiService.uploadFileToS3(
+            presignedData: presignedData,
+            file: imageFile,
+          );
+          if (success) {
+            finalImageUrl = presignedData.finalFileUrl;
+            print("✅ Adım 1 Başarılı: Görsel yüklendi -> $finalImageUrl");
+          } else {
+            throw Exception("Görsel S3'e yüklenemedi.");
+          }
+        } else {
+          throw Exception("Görsel için S3 linki alınamadı.");
+        }
       }
 
+      // 2. Adım: 3D model dosyasını yükle (varsa)
+      if (modelFile != null) {
+        print("🔍 Adım 2: 3D Model yükleme başlıyor...");
+        final presignedData = await _apiService.getPresignedUploadUrl(
+          file: modelFile,
+          fileCategory: 'model',
+        );
+
+        // --- DETAYLI HATA AYIKLAMA BURADA ---
+        if (presignedData == null) {
+          // Bu durum, backend'den 400 veya 500 hatası aldığımızda gerçekleşir.
+          throw Exception("3D Model için S3 linki alınamadı. Backend'de bir sorun olabilir.");
+        }
+
+        print("... 3D Model için S3 linki alındı, şimdi yükleniyor...");
+        final success = await _apiService.uploadFileToS3(
+          presignedData: presignedData,
+          file: modelFile,
+        );
+
+        if (success) {
+          finalModelUrl = presignedData.finalFileUrl;
+          modelFormat = presignedData.fileFormat;
+          print("✅ Adım 2 Başarılı: 3D Model yüklendi -> $finalModelUrl");
+        } else {
+          throw Exception("3D Model S3'e yüklenemedi. S3 izinlerini veya dosya boyutunu kontrol edin.");
+        }
+      }
+
+      // 3. Adım: Gönderiyi oluştur
+      print("🔍 Adım 3: Gönderi veritabanına kaydediliyor...");
       final newPost = await _apiService.createShowcasePost(
         title: title,
         description: description,
-        fileUrl: finalFileUrl,
+        fileUrl: finalImageUrl,
+        modelUrl: finalModelUrl,
+        modelFormat: modelFormat,
       );
 
       if (newPost != null) {
         _posts.insert(0, newPost);
-        _isCreatingPost = false;
-        notifyListeners();
+        print("✅ Adım 3 Başarılı: Gönderi oluşturuldu.");
         return true;
       } else {
-        throw Exception("Gönderi veritabanına kaydedilemedi.");
+        throw Exception("Gönderi API tarafından oluşturulamadı.");
       }
     } catch (e) {
-      _errorMessage = "Gönderi oluşturulurken bir hata oluştu: $e";
+      print("❌ HATA: createPost sürecinde bir sorun oluştu -> ${e.toString()}");
+      _errorMessage = "Gönderi oluşturulurken bir hata oluştu: ${e.toString().replaceAll("Exception: ", "")}";
+      return false;
+    } finally {
       _isCreatingPost = false;
       notifyListeners();
-      return false;
     }
   }
+
+  // ... (Geri kalan tüm fonksiyonlar aynı)
   Future<bool> deletePost(String postId) async {
-    // Optimistic UI: Kullanıcıyı bekletmemek için gönderiyi hemen listeden kaldır.
     final postIndex = _posts.indexWhere((p) => p.id == postId);
     if (postIndex == -1) return false;
 
     final postToRemove = _posts.removeAt(postIndex);
     notifyListeners();
 
-    // API'ye silme isteği gönder.
     final success = await _apiService.deleteShowcasePost(postId: postId);
 
-    // Eğer API isteği başarısız olursa, silinen gönderiyi geri ekle ve hata göster.
     if (!success) {
       _posts.insert(postIndex, postToRemove);
       _errorMessage = "Gönderi silinemedi. Lütfen tekrar deneyin.";
@@ -163,7 +216,6 @@ class ShowcaseProvider with ChangeNotifier {
       notifyListeners();
     }
   }
-
   Future<bool> addComment(String postId, String content, {String? parentCommentId}) async {
     try {
       final newComment = await _apiService.addComment(
@@ -189,7 +241,6 @@ class ShowcaseProvider with ChangeNotifier {
       return false;
     }
   }
-
   void _findAndAddReply(List<Comment> comments, String parentId, Comment reply) {
     for (var comment in comments) {
       if (comment.id == parentId) {
@@ -201,12 +252,11 @@ class ShowcaseProvider with ChangeNotifier {
       }
     }
   }
-
   Future<void> toggleCommentLike(String postId, String commentId, String currentUserId) async {
     final postIndex = _posts.indexWhere((p) => p.id == postId);
     if (postIndex == -1) return;
 
-    Comment? targetComment = findComment(_posts[postIndex].comments, commentId); // DÜZELTME
+    Comment? targetComment = findComment(_posts[postIndex].comments, commentId);
     if (targetComment == null) return;
 
     final isLiked = targetComment.likes.any((like) => like.userId == currentUserId);
@@ -233,8 +283,6 @@ class ShowcaseProvider with ChangeNotifier {
       notifyListeners();
     }
   }
-
-  // --- DÜZELTME: Fonksiyonu public hale getirdik ---
   Comment? findComment(List<Comment> comments, String commentId) {
     for (var comment in comments) {
       if (comment.id == commentId) return comment;
@@ -243,7 +291,6 @@ class ShowcaseProvider with ChangeNotifier {
     }
     return null;
   }
-
   Future<bool> deleteComment(String postId, String commentId) async {
     final success = await _apiService.deleteComment(commentId: commentId);
     if (success) {
@@ -257,7 +304,6 @@ class ShowcaseProvider with ChangeNotifier {
     }
     return success;
   }
-
   bool _findAndRemoveComment(List<Comment> comments, String commentId) {
     for (int i = 0; i < comments.length; i++) {
       if (comments[i].id == commentId) {

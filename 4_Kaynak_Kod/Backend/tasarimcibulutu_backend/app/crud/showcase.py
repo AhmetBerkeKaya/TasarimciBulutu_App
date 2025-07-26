@@ -1,25 +1,26 @@
-# app/crud/showcase.py
-
 from sqlalchemy.orm import Session
 from app import models, schemas
 import uuid
 
-from urllib.parse import urljoin
-from app.config import settings
+# Bu iki import'a artık gerek yok, çünkü Flutter tam URL gönderiyor.
+# from urllib.parse import urljoin
+# from app.config import settings
 
 def create_showcase_post(db: Session, post: schemas.showcase.ShowcasePostCreate, user_id: uuid.UUID) -> models.showcase.ShowcasePost:
-    # Eğer mobil taraf URL göndermiyorsa backend'te oluştur
-    if post.file_url:
-        base_url = f"https://{settings.AWS_S3_BUCKET_NAME}.s3.{settings.AWS_REGION}.amazonaws.com/"
-        corrected_file_url = urljoin(base_url, post.file_url) if not post.file_url.startswith("http") else post.file_url
-    else:
-        corrected_file_url = None
-
+    
+    # ShowcasePost veritabanı modelini oluştururken eksik olan alanları ekliyoruz.
     db_post = models.showcase.ShowcasePost(
         title=post.title,
         description=post.description,
-        file_url=corrected_file_url,
-        thumbnail_url=None,
+        file_url=post.file_url,       # Doğrudan Flutter'dan gelen URL'yi kullanıyoruz
+        thumbnail_url=post.thumbnail_url,
+        
+        # --- EKLENEN SATIRLAR ---
+        # Bu iki alanı veritabanına kaydetmeyi unutmuştuk. Şimdi ekledik.
+        model_url=post.model_url,
+        model_format=post.model_format,
+        # --- EKLENEN SATIRLAR SONU ---
+
         user_id=user_id
     )
     db.add(db_post)
@@ -51,25 +52,12 @@ def unlike_post(db: Session, post_id: uuid.UUID, user_id: uuid.UUID) -> bool:
     return False
 def create_comment(db: Session, comment: schemas.showcase.CommentCreate, user_id: uuid.UUID) -> models.showcase.PostComment:
     
-    # --- DEBUG 2: CRUD fonksiyonuna gelen veri ne? ---
-    print("\n--- DEBUG 2: create_comment CRUD fonksiyonuna gelen veri ---")
-    print(f"Schema (comment): {comment.model_dump_json(indent=2)}")
-    print("----------------------------------------------------------\n")
-
     db_comment = models.showcase.PostComment(
         content=comment.content,
         post_id=comment.post_id,
         parent_comment_id=comment.parent_comment_id,
         user_id=user_id
     )
-    
-    # --- DEBUG 3: Veritabanına KAYDETMEDEN ÖNCE modelin durumu ne? ---
-    print("\n--- DEBUG 3: DB'ye KAYDETMEDEN ÖNCE SQLAlchemy modelinin durumu ---")
-    print(f"db_comment.content: {db_comment.content}")
-    print(f"db_comment.post_id: {db_comment.post_id}")
-    print(f"db_comment.parent_comment_id: {db_comment.parent_comment_id}") # BU ALANIN DOLU OLMASI LAZIM
-    print("-------------------------------------------------------------------\n")
-
     db.add(db_comment)
     db.commit()
     db.refresh(db_comment)
