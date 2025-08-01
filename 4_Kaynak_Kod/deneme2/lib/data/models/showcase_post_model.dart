@@ -1,7 +1,12 @@
-// lib/data/models/showcase_post_model.dart
-
 import 'comment_model.dart';
 import 'user_summary_model.dart';
+
+enum ProcessingStatus {
+  PENDING,
+  PROCESSING,
+  COMPLETED,
+  FAILED,
+}
 
 class PostLike {
   final String userId;
@@ -25,6 +30,10 @@ class ShowcasePost {
   final String? thumbnailUrl;
   final String? modelUrl;
   final String? modelFormat;
+  // ================== YENİ ALAN ==================
+  final String? modelUrn;
+  // ===============================================
+  final ProcessingStatus processingStatus;
   final DateTime createdAt;
   final DateTime updatedAt;
   final UserSummary owner;
@@ -39,6 +48,8 @@ class ShowcasePost {
     this.thumbnailUrl,
     this.modelUrl,
     this.modelFormat,
+    this.modelUrn, // Constructor'a eklendi
+    required this.processingStatus,
     required this.createdAt,
     required this.updatedAt,
     required this.owner,
@@ -55,6 +66,13 @@ class ShowcasePost {
       thumbnailUrl: json['thumbnail_url'],
       modelUrl: json['model_url'],
       modelFormat: json['model_format'],
+      // ================== YENİ ALAN ==================
+      modelUrn: json['model_urn'],
+      // ===============================================
+      processingStatus: ProcessingStatus.values.firstWhere(
+            (e) => e.name.toLowerCase() == json['processing_status'].toString().toLowerCase(),
+        orElse: () => ProcessingStatus.FAILED,
+      ),
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       owner: UserSummary.fromJson(json['owner']),

@@ -1,0 +1,4 @@
+# model_processor/requirements.txt
+autodesk-forge-sdk
+psycopg2-binary
+requests

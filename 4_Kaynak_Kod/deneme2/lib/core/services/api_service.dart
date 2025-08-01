@@ -1,7 +1,8 @@
-// lib/core/services/api_service.dart (YEPYENİ HALİ)
+// lib/core/services/api_service.dart
 
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import '../../data/models/application_model.dart';
 import '../../data/models/comment_model.dart';
@@ -17,7 +18,6 @@ import '../../data/models/test_result_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/work_experience_model.dart';
 import 'dio_client.dart';
-import 'package:http_parser/http_parser.dart'; // YENİ IMPORT: MediaType için
 
 
 class PresignedUrlResponse {
@@ -37,10 +37,111 @@ class PresignedUrlResponse {
     );
   }
 }
+// --- YENİ CLASS: Backend'den dönecek olan cevabı modellemek için ---
+class PostInitResponse {
+  final String postId;
+  final PresignedUrlData uploadData;
 
+  PostInitResponse({required this.postId, required this.uploadData});
 
+  factory PostInitResponse.fromJson(Map<String, dynamic> json) {
+    return PostInitResponse(
+      postId: json['post_id'],
+      uploadData: PresignedUrlData.fromJson(json['upload_data']),
+    );
+  }
+}
+
+// Presigned URL için genel bir class
+class PresignedUrlData {
+  final String url;
+  final Map<String, dynamic> fields;
+
+  PresignedUrlData({required this.url, required this.fields});
+
+  factory PresignedUrlData.fromJson(Map<String, dynamic> json) {
+    return PresignedUrlData(
+      url: json['url'],
+      fields: Map<String, dynamic>.from(json['fields']),
+    );
+  }
+}
 class ApiService {
   final Dio _dio = DioClient.instance.dio;
+
+  Future<Map<String, dynamic>?> getViewerToken() async {
+    try {
+      // Bu endpoint, auth token gerektirmiyor.
+      final response = await _dio.get('/token/viewer');
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      print('getViewerToken DioException: ${e.response?.data}');
+      return null;
+    }
+  }
+  Future<PostInitResponse?> initializePostUpload({
+    required String title,
+    String? description,
+    required String originalFilename,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/showcase/posts/initialize-upload',
+        data: {
+          'title': title,
+          'description': description,
+          'original_filename': originalFilename,
+        },
+      );
+      return PostInitResponse.fromJson(response.data);
+    } on DioException catch (e) {
+      print('initializePostUpload DioException: ${e.response?.data}');
+      return null;
+    }
+  }
+
+  Future<bool> uploadFileToS3({
+    required PresignedUrlData presignedData,
+    required File file,
+  }) async {
+    try {
+      // ZIP dosyaları için Content-Type'ı 'application/zip' olarak ayarlıyoruz.
+      // Diğer dosyalar için mime paketinin belirlediği değeri kullanıyoruz.
+      final String contentType;
+      if (file.path.toLowerCase().endsWith('.zip')) {
+        contentType = 'application/zip';
+      } else {
+        contentType = lookupMimeType(file.path) ?? 'application/octet-stream';
+      }
+      print("S3'e yüklenecek dosyanın Content-Type'ı: $contentType");
+
+      final formData = FormData.fromMap({
+        ...presignedData.fields,
+        'file': await MultipartFile.fromFile(
+          file.path,
+          contentType: MediaType.parse(contentType),
+        ),
+      });
+
+      final s3Dio = Dio(); // Token vs. olmadan, doğrudan S3'e istek atmak için yeni bir Dio instance'ı
+      final response = await s3Dio.post(presignedData.url, data: formData);
+
+      // S3 presigned URL'e başarılı POST isteği genellikle 204 No Content döner.
+      return response.statusCode == 204 || response.statusCode == 200;
+    } catch (e) {
+      print('❌ S3 yükleme hatası: $e');
+      if (e is DioException) {
+        print('🔴 DioException Detayları: ${e.response?.data}');
+        print('🔴 DioException Headerları: ${e.requestOptions.headers}');
+      }
+      return false;
+    }
+  }
+
+  // ========================================================================
+  // ===                      DEĞİŞİKLİKLERİN SONU                        ===
+  // ========================================================================
+
 
   Future<List<ShowcasePost>> getShowcasePosts({int page = 0, int limit = 20}) async {
     try {
@@ -78,36 +179,6 @@ class ApiService {
       return null;
     }
   }
-
-  Future<bool> uploadFileToS3({
-    required PresignedUrlResponse presignedData,
-    required File file,
-  }) async {
-    try {
-      final contentType = lookupMimeType(file.path) ?? 'application/octet-stream';
-
-      final formData = FormData.fromMap({
-        ...presignedData.fields,
-        'Content-Type': contentType,
-        'file': await MultipartFile.fromFile(file.path),
-      });
-
-      final s3Dio = Dio();
-      final response = await s3Dio.post(presignedData.url, data: formData);
-
-      return response.statusCode == 204;
-    } catch (e) {
-      print('❌ S3 yükleme hatası: $e');
-      if (e is DioException) {
-        print('🔴 DioException Detayları:');
-        print('  - Hata Tipi: ${e.type}');
-        print('  - İstek Adresi: ${e.requestOptions.uri}');
-        print('  - Sunucu Cevabı (Response Body): ${e.response?.data}');
-      }
-      return false;
-    }
-  }
-
 
   Future<ShowcasePost?> createShowcasePost({
     required String title,
@@ -510,4 +581,5 @@ class ApiService {
       return TestResult.fromJson(response.data);
     } on DioException { return null; }
   }
+
 }

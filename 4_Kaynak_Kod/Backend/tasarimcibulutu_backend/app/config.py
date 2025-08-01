@@ -1,4 +1,3 @@
-# config.py
 import os
 from pydantic import EmailStr
 from pydantic_settings import BaseSettings
@@ -30,11 +29,17 @@ class Settings(BaseSettings):
     MAIL_STARTTLS: bool = True
     MAIL_SSL_TLS: bool = False
 
-    # --- YENİ: AWS S3 AYARLARI ---
+    # AWS S3 AYARLARI
     AWS_ACCESS_KEY_ID: str
     AWS_SECRET_ACCESS_KEY: str
     AWS_S3_BUCKET_NAME: str
     AWS_REGION: str
+
+    # --- YENİ EKLENEN KISIM ---
+    # Autodesk Platform Services (APS) AYARLARI
+    APS_CLIENT_ID: str
+    APS_CLIENT_SECRET: str
+    # --- YENİ EKLENEN KISIM SONU ---
 
     class Config:
         env_file = ".env"

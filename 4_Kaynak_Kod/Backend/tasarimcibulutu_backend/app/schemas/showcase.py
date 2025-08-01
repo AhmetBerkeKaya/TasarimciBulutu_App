@@ -1,10 +1,11 @@
-# app/schemas/showcase.py DOSYASININ YENİ HALİ
+# app/schemas/showcase.py DOSYASININ NİHAİ HALİ
 
 import uuid
 from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional, Literal
 from datetime import datetime
 from .user import UserSummary
+from app.models.showcase import ProcessingStatus 
 
 class CommentCreateBody(BaseModel):
     content: str
@@ -37,6 +38,7 @@ class PostLike(BaseModel):
     post_id: uuid.UUID
     model_config = ConfigDict(from_attributes=True)
 
+# ================== ANA DEĞİŞİKLİK BURADA ==================
 class ShowcasePost(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
@@ -48,10 +50,15 @@ class ShowcasePost(BaseModel):
     thumbnail_url: Optional[str] = None
     model_url: Optional[str] = None
     model_format: Optional[str] = None
+    # --- EKSİK ALAN EKLENDİ ---
+    model_urn: Optional[str] = None 
+    # --------------------------
+    processing_status: ProcessingStatus
     owner: UserSummary
     likes: List[PostLike] = []
     comments: List[Comment] = []
     model_config = ConfigDict(from_attributes=True)
+# ==========================================================
 
 class PresignedUrlResponse(BaseModel):
     url: str
@@ -78,5 +85,18 @@ class ShowcasePostCreate(BaseModel):
 
 class ShowcasePostUpdate(ShowcasePostBase):
     pass
+
+class ShowcasePostInit(BaseModel):
+    title: str
+    description: Optional[str] = None
+    original_filename: str
+
+class PresignedUrlData(BaseModel):
+    url: str
+    fields: dict
+
+class ShowcasePostInitResponse(BaseModel):
+    post_id: uuid.UUID
+    upload_data: PresignedUrlData
 
 Comment.model_rebuild()

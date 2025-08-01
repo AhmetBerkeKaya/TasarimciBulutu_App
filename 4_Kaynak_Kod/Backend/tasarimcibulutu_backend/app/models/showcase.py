@@ -1,11 +1,18 @@
-# app/models/showcase.py DOSYASININ YENİ HALİ
+# app/models/showcase.py DOSYASININ NİHAİ HALİ
 
 import uuid
+import enum
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey ,Enum as EnumSQL
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
+
+class ProcessingStatus(enum.Enum):
+    PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 class ShowcasePost(Base):
     """
@@ -17,15 +24,17 @@ class ShowcasePost(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    
-    file_url = Column(String, nullable=True) 
-    
+    file_url = Column(String, nullable=True)
     thumbnail_url = Column(String, nullable=True)
-
     model_url = Column(String, nullable=True)
-    
     model_format = Column(String(10), nullable=True)
+    
+    # ================== EKSİK ALAN BURAYA EKLENDİ ==================
+    # Bu, veritabanındaki 'model_urn' kolonunu koda tanıtır.
+    model_urn = Column(String(512), nullable=True)
+    # =============================================================
 
+    processing_status = Column(EnumSQL(ProcessingStatus), nullable=False, default=ProcessingStatus.PENDING) # Default PENDING olmalı
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -37,7 +46,7 @@ class ShowcasePost(Base):
         primaryjoin="and_(ShowcasePost.id==PostComment.post_id, PostComment.parent_comment_id==None)",
         back_populates="post", 
         cascade="all, delete-orphan", 
-        order_by="PostComment.created_at"
+        order_by="PostComment.created_at.desc()" # Yorumları yeniden eskiye sıralamak daha iyi olabilir
     )
 
 class PostLike(Base):
@@ -58,7 +67,7 @@ class PostComment(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     author = relationship("User", back_populates="comments")
-    post = relationship("ShowcasePost", back_populates="comments")
+    post = relationship("ShowcasePost", foreign_keys=[post_id]) # foreign_keys belirtmek belirsizliği önler
     parent = relationship("PostComment", remote_side=[id], back_populates="replies")
     replies = relationship("PostComment", back_populates="parent", cascade="all, delete-orphan")
     likes = relationship("CommentLike", back_populates="comment", cascade="all, delete-orphan")

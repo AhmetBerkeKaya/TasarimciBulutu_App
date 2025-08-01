@@ -1,0 +1,42 @@
+# template.yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  TasarimciBulutu 3D Model Processor
+
+Parameters:
+  S3BucketName:
+    Type: String
+  ApsClientId:
+    Type: String
+    NoEcho: true
+  ApsClientSecret:
+    Type: String
+    NoEcho: true
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+  # AwsRegion parametresi buradan kaldırıldı.
+
+Resources:
+  ModelProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: TasarimciBulutu-ModelProcessor
+      CodeUri: model_processor/
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.12
+      Architectures:
+        - x86_64
+      Timeout: 900
+      MemorySize: 1024
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref S3BucketName
+      Environment:
+        Variables:
+          APS_CLIENT_ID: !Ref ApsClientId
+          APS_CLIENT_SECRET: !Ref ApsClientSecret
+          DATABASE_URL: !Ref DatabaseUrl
+          PROCESSED_BUCKET_NAME: !Ref S3BucketName
+          # AWS_REGION değişkeni buradan kaldırıldı.

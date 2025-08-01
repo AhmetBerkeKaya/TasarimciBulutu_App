@@ -1,7 +1,9 @@
 // lib/core/providers/showcase_provider.dart
 
 import 'dart:io';
+import 'package:archive/archive_io.dart'; // ZIP için gerekli
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as path; // Dosya adı için gerekli
 import '../../data/models/comment_model.dart';
 import '../../data/models/showcase_post_model.dart';
 import '../services/api_service.dart';
@@ -31,8 +33,103 @@ class ShowcaseProvider with ChangeNotifier {
     }
   }
 
+  // ========================================================================
+  // ===                 İŞTE ANA DEĞİŞİKLİK BURADA                       ===
+  // ========================================================================
+  Future<bool> createPost({
+    required String title,
+    String? description,
+    required File fileToUpload,
+  }) async {
+    _isCreatingPost = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      // --- YENİ ADIM: Dosyayı ZIP olarak paketle ---
+      File zipFile;
+      // Sadece .obj dosyalarını ZIP'liyoruz. Diğerlerini (resim vb.) doğrudan yollayabiliriz.
+      if (path.extension(fileToUpload.path).toLowerCase() == '.obj') {
+        print("🔍 Adım 0: OBJ dosyası algılandı, ZIP'e paketleniyor...");
+        zipFile = await _createZipFromObj(fileToUpload);
+        print("✅ Adım 0 Başarılı: ZIP dosyası oluşturuldu -> ${zipFile.path}");
+      } else {
+        // Eğer dosya .obj değilse, olduğu gibi kullan. (Gelecekteki resim yüklemeleri için)
+        zipFile = fileToUpload;
+      }
+      // --- YENİ ADIM SONU ---
+
+      // 1. Adım: Backend'e gönderi oluşturma sürecini başlatma isteği gönder
+      print("🔍 Adım 1: Gönderi oluşturma süreci başlatılıyor...");
+      final initResponse = await _apiService.initializePostUpload(
+        title: title,
+        description: description,
+        // Backend'e dosya adını .zip uzantılı olarak gönderiyoruz
+        originalFilename: path.basename(zipFile.path),
+      );
+
+      if (initResponse == null) {
+        throw Exception("Backend'den yükleme linki alınamadı.");
+      }
+      print("✅ Adım 1 Başarılı: Yükleme linki alındı. Post ID: ${initResponse.postId}");
+
+      // 2. Adım: Backend'den gelen linki kullanarak ZIP dosyasını S3'e yükle
+      print("🔍 Adım 2: ZIP dosyası S3'e yükleniyor...");
+      final uploadSuccess = await _apiService.uploadFileToS3(
+        presignedData: initResponse.uploadData,
+        file: zipFile,
+      );
+
+      if (!uploadSuccess) {
+        throw Exception("Dosya S3'e yüklenemedi.");
+      }
+      print("✅ Adım 2 Başarılı: Dosya S3'e yüklendi. Backend şimdi işlemeye başlayacak.");
+
+      // 3. Adım (UI Güncelleme): Yeni gönderiyi anında göstermek için listeyi yenile
+      await fetchPosts();
+
+      return true;
+
+    } catch (e) {
+      print("❌ HATA: createPost sürecinde bir sorun oluştu -> ${e.toString()}");
+      _errorMessage = "Gönderi oluşturulurken bir hata oluştu: ${e.toString().replaceAll("Exception: ", "")}";
+      return false;
+    } finally {
+      _isCreatingPost = false;
+      notifyListeners();
+    }
+  }
+
+  // --- YENİ YARDIMCI FONKSİYON: OBJ dosyasından ZIP oluşturur ---
+  Future<File> _createZipFromObj(File objFile) async {
+    final objBytes = await objFile.readAsBytes();
+    final archive = Archive();
+
+    // Arşivin içine her zaman "model.obj" adıyla ekliyoruz
+    final archiveFile = ArchiveFile('model.obj', objBytes.length, objBytes);
+    archive.addFile(archiveFile);
+
+    final zipEncoder = ZipEncoder();
+    final zipData = zipEncoder.encode(archive);
+
+    if (zipData == null) {
+      throw Exception('ZIP verisi oluşturulamadı.');
+    }
+
+    // Geçici bir dizine .zip dosyasını yaz
+    final tempDir = Directory.systemTemp;
+    final zipFileName = '${path.basenameWithoutExtension(objFile.path)}.zip';
+    final zipFile = File(path.join(tempDir.path, zipFileName));
+    await zipFile.writeAsBytes(zipData);
+
+    return zipFile;
+  }
+  // ========================================================================
+  // ===                 DEĞİŞİKLİKLERİN SONU                           ===
+  // ========================================================================
+
+
   Future<void> fetchPosts() async {
-    // ... içerik aynı
     if (_state == ShowcaseState.loading) return;
     _state = ShowcaseState.loading;
     notifyListeners();
@@ -69,101 +166,6 @@ class ShowcaseProvider with ChangeNotifier {
       _errorMessage = "Daha fazla gönderi yüklenemedi: $e";
       _state = ShowcaseState.error;
     } finally {
-      notifyListeners();
-    }
-  }
-
-  // --- GÜNCELLENEN FONKSİYON ---
-  Future<bool> createPost({
-    required String title,
-    String? description,
-    File? imageFile,
-    File? modelFile,
-  }) async {
-    _isCreatingPost = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    String? finalImageUrl;
-    String? finalModelUrl;
-    String? modelFormat;
-
-    try {
-      // 1. Adım: Resim dosyasını yükle (varsa)
-      if (imageFile != null) {
-        print("🔍 Adım 1: Görsel yükleme başlıyor...");
-        final presignedData = await _apiService.getPresignedUploadUrl(
-          file: imageFile,
-          fileCategory: 'image',
-        );
-        if (presignedData != null) {
-          final success = await _apiService.uploadFileToS3(
-            presignedData: presignedData,
-            file: imageFile,
-          );
-          if (success) {
-            finalImageUrl = presignedData.finalFileUrl;
-            print("✅ Adım 1 Başarılı: Görsel yüklendi -> $finalImageUrl");
-          } else {
-            throw Exception("Görsel S3'e yüklenemedi.");
-          }
-        } else {
-          throw Exception("Görsel için S3 linki alınamadı.");
-        }
-      }
-
-      // 2. Adım: 3D model dosyasını yükle (varsa)
-      if (modelFile != null) {
-        print("🔍 Adım 2: 3D Model yükleme başlıyor...");
-        final presignedData = await _apiService.getPresignedUploadUrl(
-          file: modelFile,
-          fileCategory: 'model',
-        );
-
-        // --- DETAYLI HATA AYIKLAMA BURADA ---
-        if (presignedData == null) {
-          // Bu durum, backend'den 400 veya 500 hatası aldığımızda gerçekleşir.
-          throw Exception("3D Model için S3 linki alınamadı. Backend'de bir sorun olabilir.");
-        }
-
-        print("... 3D Model için S3 linki alındı, şimdi yükleniyor...");
-        final success = await _apiService.uploadFileToS3(
-          presignedData: presignedData,
-          file: modelFile,
-        );
-
-        if (success) {
-          finalModelUrl = presignedData.finalFileUrl;
-          modelFormat = presignedData.fileFormat;
-          print("✅ Adım 2 Başarılı: 3D Model yüklendi -> $finalModelUrl");
-        } else {
-          throw Exception("3D Model S3'e yüklenemedi. S3 izinlerini veya dosya boyutunu kontrol edin.");
-        }
-      }
-
-      // 3. Adım: Gönderiyi oluştur
-      print("🔍 Adım 3: Gönderi veritabanına kaydediliyor...");
-      final newPost = await _apiService.createShowcasePost(
-        title: title,
-        description: description,
-        fileUrl: finalImageUrl,
-        modelUrl: finalModelUrl,
-        modelFormat: modelFormat,
-      );
-
-      if (newPost != null) {
-        _posts.insert(0, newPost);
-        print("✅ Adım 3 Başarılı: Gönderi oluşturuldu.");
-        return true;
-      } else {
-        throw Exception("Gönderi API tarafından oluşturulamadı.");
-      }
-    } catch (e) {
-      print("❌ HATA: createPost sürecinde bir sorun oluştu -> ${e.toString()}");
-      _errorMessage = "Gönderi oluşturulurken bir hata oluştu: ${e.toString().replaceAll("Exception: ", "")}";
-      return false;
-    } finally {
-      _isCreatingPost = false;
       notifyListeners();
     }
   }

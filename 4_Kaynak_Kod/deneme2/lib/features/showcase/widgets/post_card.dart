@@ -1,6 +1,5 @@
-// lib/features/showcase/widgets/post_card.dart
-
-import 'package:deneme2/features/showcase/screens/image_viewer_screen.dart'; // Yeni ekranı import et
+import 'package:deneme2/data/models/showcase_post_model.dart';
+import 'package:deneme2/features/showcase/screens/image_viewer_screen.dart';
 import 'package:deneme2/features/showcase/screens/three_d_viewer_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,7 +7,6 @@ import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/showcase_provider.dart';
-import '../../../data/models/showcase_post_model.dart';
 import 'comment_bottom_sheet.dart';
 
 class PostCard extends StatelessWidget {
@@ -29,7 +27,6 @@ class PostCard extends StatelessWidget {
     return url;
   }
 
-  // ... (_showPostOptions ve _showDeleteConfirmationDialog aynı kalacak)
   void _showPostOptions(BuildContext context, String postId, bool isMyPost) {
     showModalBottomSheet(
       context: context,
@@ -66,6 +63,7 @@ class PostCard extends StatelessWidget {
       },
     );
   }
+
   void _showDeleteConfirmationDialog(BuildContext context, String postId) {
     showDialog(
       context: context,
@@ -75,9 +73,7 @@ class PostCard extends StatelessWidget {
         actions: <Widget>[
           TextButton(
             child: const Text('İptal'),
-            onPressed: () {
-              Navigator.of(ctx).pop();
-            },
+            onPressed: () => Navigator.of(ctx).pop(),
           ),
           TextButton(
             child: const Text('Sil', style: TextStyle(color: Colors.red)),
@@ -88,7 +84,7 @@ class PostCard extends StatelessWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Gönderi başarıyla silindi.'), backgroundColor: Colors.green),
                   );
-                } else if(context.mounted) {
+                } else if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Gönderi silinirken bir hata oluştu.'), backgroundColor: Colors.red),
                   );
@@ -105,7 +101,8 @@ class PostCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
-    final correctedFileUrl = _getCorrectImageUrl(post.fileUrl);
+
+    final correctedThumbnailUrl = _getCorrectImageUrl(post.thumbnailUrl);
 
     timeago.setLocaleMessages('tr', timeago.TrMessages());
 
@@ -119,28 +116,24 @@ class PostCard extends StatelessWidget {
       elevation: 2.0,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-      // --- GÜNCELLEME: InkWell ile tüm kart tıklanabilir yapıldı ---
       child: InkWell(
         onTap: () {
-          // Yönlendirme mantığı burada
-          if (post.modelUrl != null && post.modelUrl!.isNotEmpty) {
-            Navigator.of(context).push(
-              MaterialPageRoute(
+          if (post.processingStatus == ProcessingStatus.COMPLETED) {
+            // ================== SON DÜZELTME BURADA ==================
+            // 3D Görüntüleyiciye artık `modelUrn`'yi gönderiyoruz.
+            if (post.modelUrn != null && post.modelUrn!.isNotEmpty) {
+              Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => ThreeDViewerScreen(
-                  modelUrl: post.modelUrl!,
-                  title: post.title,
+                    modelUrn: post.modelUrn!,
+                    title: post.title
                 ),
-              ),
-            );
-          } else if (post.fileUrl != null && post.fileUrl!.isNotEmpty) {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => ImageViewerScreen(
-                  imageUrl: correctedFileUrl,
-                  heroTag: post.id, // Animasyon için unique bir tag
-                ),
-              ),
-            );
+              ));
+            }
+            // ==========================================================
+            else if (post.thumbnailUrl != null && post.thumbnailUrl!.isNotEmpty) {
+              // Resim görüntüleyiciye tıklama
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => ImageViewerScreen(imageUrl: correctedThumbnailUrl, heroTag: post.id)));
+            }
           }
         },
         child: Padding(
@@ -149,23 +142,13 @@ class PostCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ListTile(
-                // ... ListTile içeriği aynı ...
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(
-                  backgroundImage: post.owner.profilePictureUrl != null
-                      ? NetworkImage(post.owner.profilePictureUrl!)
-                      : null,
-                  child: post.owner.profilePictureUrl == null
-                      ? Text(post.owner.name.isNotEmpty ? post.owner.name[0].toUpperCase() : 'U')
-                      : null,
+                  backgroundImage: post.owner.profilePictureUrl != null ? NetworkImage(post.owner.profilePictureUrl!) : null,
+                  child: post.owner.profilePictureUrl == null ? Text(post.owner.name.isNotEmpty ? post.owner.name[0].toUpperCase() : 'U') : null,
                 ),
-                title: Text(post.owner.name,
-                    style: textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold)),
-                subtitle: Text(
-                  timeago.format(post.createdAt, locale: 'tr'),
-                  style: textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
-                ),
+                title: Text(post.owner.name, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                subtitle: Text(timeago.format(post.createdAt, locale: 'tr'), style: textTheme.bodySmall?.copyWith(color: Colors.grey[600])),
                 trailing: IconButton(
                   icon: const Icon(Icons.more_horiz),
                   onPressed: () => _showPostOptions(context, post.id, isMyPost),
@@ -183,90 +166,16 @@ class PostCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
+              const SizedBox(height: 12),
 
-              if (correctedFileUrl.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                // --- GÜNCELLEME: Eski GestureDetector kaldırıldı ---
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Hero( // Animasyon için Hero widget'ı eklendi
-                      tag: post.id,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8.0),
-                        child: Image.network(
-                          correctedFileUrl,
-                          width: double.infinity,
-                          height: 250,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (context, child, progress) {
-                            if (progress == null) return child;
-                            return Container(
-                              height: 250,
-                              color: Colors.grey[200],
-                              child: const Center(child: CircularProgressIndicator()),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              height: 250,
-                              color: Colors.grey[200],
-                              child: const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.broken_image, size: 40, color: Colors.grey),
-                                  SizedBox(height: 8),
-                                  Text("Resim yüklenemedi", style: TextStyle(color: Colors.grey)),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    if (post.modelUrl != null && post.modelUrl!.isNotEmpty)
-                      Positioned(
-                        top: 10,
-                        right: 10,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.6),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.white.withOpacity(0.5), width: 1)
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.view_in_ar, color: Colors.white, size: 16),
-                              SizedBox(width: 4),
-                              Text(
-                                '3D GÖRÜNÜM',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
+              _buildContentArea(context, correctedThumbnailUrl),
 
-              // ... (Geri kalan kısım aynı)
               const SizedBox(height: 8),
               Row(
                 children: [
-                  if (post.likes.isNotEmpty)
-                    Text('${post.likes.length} beğeni',
-                        style: textTheme.bodySmall),
+                  if (post.likes.isNotEmpty) Text('${post.likes.length} beğeni', style: textTheme.bodySmall),
                   const Spacer(),
-                  if (post.comments.isNotEmpty)
-                    Text('${post.comments.length} yorum',
-                        style: textTheme.bodySmall),
+                  if (post.comments.isNotEmpty) Text('${post.comments.length} yorum', style: textTheme.bodySmall),
                 ],
               ),
               const Divider(),
@@ -295,16 +204,14 @@ class PostCard extends StatelessWidget {
                           backgroundColor: Colors.transparent,
                           builder: (ctx) => CommentBottomSheet(post: post),
                         );
-                      }
-                  ),
+                      }),
                   _buildActionButton(
                       context: context,
                       icon: Icons.share_outlined,
                       label: 'Paylaş',
                       onTap: () {
                         // TODO: Paylaşma işlevselliği eklenecek
-                      }
-                  ),
+                      }),
                 ],
               ),
             ],
@@ -314,6 +221,116 @@ class PostCard extends StatelessWidget {
     );
   }
 
+  Widget _buildContentArea(BuildContext context, String imageUrl) {
+    switch (post.processingStatus) {
+      case ProcessingStatus.PROCESSING:
+      case ProcessingStatus.PENDING:
+        return Container(
+          height: 250,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text("Modeliniz işleniyor..."),
+                Text("Bu işlem birkaç dakika sürebilir.", style: TextStyle(fontSize: 12, color: Colors.grey)),
+              ],
+            ),
+          ),
+        );
+      case ProcessingStatus.FAILED:
+        return Container(
+          height: 250,
+          decoration: BoxDecoration(
+            color: Colors.red.shade50,
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, color: Colors.red, size: 40),
+                SizedBox(height: 16),
+                Text("Model işlenirken bir hata oluştu.", style: TextStyle(color: Colors.red)),
+              ],
+            ),
+          ),
+        );
+      case ProcessingStatus.COMPLETED:
+        if (imageUrl.isNotEmpty) {
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              Hero(
+                tag: post.id,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: Image.network(
+                    imageUrl,
+                    width: double.infinity,
+                    height: 250,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return Container(
+                        height: 250,
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator()),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      print("THUMBNAIL HATASI: URL -> $imageUrl, Hata -> $error");
+                      return Container(
+                        height: 250,
+                        color: Colors.grey[200],
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                            SizedBox(height: 8),
+                            Text("Resim yüklenemedi", style: TextStyle(color: Colors.grey)),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              // ================== SON DÜZELTME BURADA ==================
+              // `modelUrn`'yi kontrol ediyoruz.
+              if (post.modelUrn != null && post.modelUrn!.isNotEmpty)
+              // ==========================================================
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.view_in_ar, color: Colors.white, size: 16),
+                        SizedBox(width: 4),
+                        Text('3D GÖRÜNÜM', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          );
+        }
+        return const SizedBox.shrink();
+    }
+  }
+
   Widget _buildActionButton({
     required BuildContext context,
     required IconData icon,
@@ -321,7 +338,6 @@ class PostCard extends StatelessWidget {
     required VoidCallback onTap,
     Color? color,
   }) {
-    // ... içerik aynı
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),

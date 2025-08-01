@@ -1,28 +1,25 @@
 from sqlalchemy.orm import Session
 from app import models, schemas
 import uuid
+from app.models.showcase import ProcessingStatus # Enum'ı import et
 
-# Bu iki import'a artık gerek yok, çünkü Flutter tam URL gönderiyor.
-# from urllib.parse import urljoin
-# from app.config import settings
 
-def create_showcase_post(db: Session, post: schemas.showcase.ShowcasePostCreate, user_id: uuid.UUID) -> models.showcase.ShowcasePost:
+def create_showcase_post(db: Session, post: schemas.showcase.ShowcasePostCreate | schemas.showcase.ShowcasePostInit, user_id: uuid.UUID, status: ProcessingStatus = ProcessingStatus.COMPLETED) -> models.showcase.ShowcasePost:
     
-    # ShowcasePost veritabanı modelini oluştururken eksik olan alanları ekliyoruz.
     db_post = models.showcase.ShowcasePost(
         title=post.title,
         description=post.description,
-        file_url=post.file_url,       # Doğrudan Flutter'dan gelen URL'yi kullanıyoruz
-        thumbnail_url=post.thumbnail_url,
-        
-        # --- EKLENEN SATIRLAR ---
-        # Bu iki alanı veritabanına kaydetmeyi unutmuştuk. Şimdi ekledik.
-        model_url=post.model_url,
-        model_format=post.model_format,
-        # --- EKLENEN SATIRLAR SONU ---
-
-        user_id=user_id
+        user_id=user_id,
+        processing_status=status # Yeni status parametresini kullan
     )
+    
+    # Eğer bu eski tip bir oluşturma ise (3D modelsiz), URL'leri doğrudan ekle
+    if isinstance(post, schemas.showcase.ShowcasePostCreate):
+        db_post.file_url=post.file_url
+        db_post.thumbnail_url=post.thumbnail_url
+        db_post.model_url=post.model_url
+        db_post.model_format=post.model_format
+
     db.add(db_post)
     db.commit()
     db.refresh(db_post)
@@ -95,3 +92,11 @@ def unlike_comment(db: Session, comment_id: uuid.UUID, user_id: uuid.UUID) -> bo
         db.commit()
         return True
     return False
+
+def update_post_raw_file_url(db: Session, post_id: uuid.UUID, file_url: str):
+    db_post = db.query(models.ShowcasePost).filter(models.ShowcasePost.id == post_id).first()
+    if db_post:
+        db_post.file_url = file_url
+        db.commit()
+        db.refresh(db_post)
+    return db_post

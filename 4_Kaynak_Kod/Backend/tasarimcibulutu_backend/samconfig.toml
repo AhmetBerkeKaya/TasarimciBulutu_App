@@ -1,0 +1,12 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "tasarimcibulutu"
+resolve_s3 = true
+s3_prefix = "tasarimcibulutu"
+region = "eu-north-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "S3BucketName=\"tasarimcibulutu-showcase-files-ahmet\""
+image_repositories = []
+disable_rollback = true
