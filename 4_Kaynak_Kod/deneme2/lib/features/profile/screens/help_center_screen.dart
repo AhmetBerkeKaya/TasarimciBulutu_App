@@ -1,88 +1,76 @@
-// ------------------------------------------------------------------
-// DOSYA 2: lib/features/profile/screens/help_center_screen.dart (YENİ)
-// ------------------------------------------------------------------
+// =======================================================================
+// DOSYA 2: lib/features/profile/screens/help_center_screen.dart (Eski faq_screen.dart)
+// =======================================================================
 import 'package:flutter/material.dart';
 
 class HelpCenterScreen extends StatelessWidget {
   const HelpCenterScreen({super.key});
 
+  final List<Map<String, String>> faqData = const [
+    {
+      'question': 'Tasarımcı Bulutu nedir?',
+      'answer': 'Tasarımcı Bulutu, Türkiye\'deki freelance tasarım ve mühendislik profesyonelleri ile bu yeteneklere ihtiyaç duyan firmaları bir araya getiren bir proje pazar yeridir.'
+    },
+    {
+      'question': 'Platforma üyelik ücretli mi?',
+      'answer': 'Platforma kaydolmak ve profil oluşturmak hem freelancerlar hem de müşteriler için tamamen ücretsizdir. Sadece tamamlanan projeler üzerinden belirli bir hizmet bedeli alınmaktadır.'
+    },
+    {
+      'question': 'Yetenek testleri ne işe yarıyor?',
+      'answer': 'Yetenek testleri, freelancerların belirli yazılım ve tasarım disiplinlerindeki yetkinliklerini objektif bir şekilde kanıtlamalarını sağlar. Başarıyla tamamlanan testler, profilinizde bir rozet olarak sergilenir ve müşterilerin size olan güvenini artırır.'
+    },
+    {
+      'question': 'Ödemeler nasıl güvence altına alınıyor?',
+      'answer': 'Müşteri bir projeyi başlattığında, proje bedeli güvenli bir emanet hesabına (escrow) aktarılır. Freelancer projeyi teslim edip müşteri onayladığında, ödeme freelancerın hesabına transfer edilir. Bu sistem her iki tarafı da korur.'
+    },
+    {
+      'question': 'Bir proje ile ilgili anlaşmazlık yaşarsam ne yapmalıyım?',
+      'answer': 'Platformumuz, taraflar arasında yaşanabilecek anlaşmazlıklar için bir çözüm merkezi sunmaktadır. Destek ekibimizle iletişime geçerek sorunun çözümü için yardım talep edebilirsiniz.'
+    },
+  ];
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Yardım Merkezi'),
+        title: const Text('Yardım Merkezi & SSS'),
+        backgroundColor: theme.scaffoldBackgroundColor,
+        elevation: 1,
       ),
-      body: ListView(
+      body: ListView.builder(
         padding: const EdgeInsets.all(16.0),
-        children: [
-          Text(
-            'Sıkça Sorulan Sorular',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          _buildFaqSection(
-            context,
-            title: 'Freelancer\'lar İçin',
-            questions: const {
-              'Nasıl proje başvurusu yapabilirim?': 'Proje ilanları sayfasından ilgilendiğiniz projeyi seçip, detay sayfasındaki "Projeye Başvur" butonu ile teklifinizi ve kapak yazınızı gönderebilirsiniz.',
-              'Profilimi nasıl daha çekici hale getirebilirim?': 'Profilinize yeteneklerinizi, geçmiş iş deneyimlerinizi ve özellikle görsel çalışmalarınızı içeren bir portfolyo eklemek, firmaların dikkatini çekmede en önemli faktördür.',
-              'Değerlendirme sistemi nasıl çalışır?': 'Tamamlanan her proje sonrası, hem sizin firmayı hem de firmanın sizi değerlendirme hakkı bulunur. Aldığınız olumlu değerlendirmeler, profilinizin güvenilirliğini artırır.',
-            },
-          ),
-          const SizedBox(height: 20),
-          _buildFaqSection(
-            context,
-            title: 'Firmalar İçin',
-            questions: const {
-              'Nasıl proje yayınlarım?': 'Panelinizdeki "Proje Yayınla" butonu ile projenizin detaylarını, bütçesini ve aradığınız nitelikleri belirterek kolayca ilan oluşturabilirsiniz.',
-              'Doğru freelancer\'ı nasıl seçerim?': 'Gelen başvuruları incelerken freelancer\'ların profillerini, portfolyolarını, yeteneklerini ve daha önceki işlerinden aldıkları değerlendirmeleri dikkatle incelemenizi öneririz.',
-              'Proje tamamlama süreci nasıl işler?': 'Freelancer işi teslim ettiğinde, projeniz "İncelemede" sekmesine düşer. Teslimatı kontrol ettikten sonra "Onayla ve Tamamla" butonuyla projeyi sonlandırabilir veya "Revizyon İste" ile değişiklik talep edebilirsiniz.',
-            },
-          ),
-          const Divider(height: 48),
-          Center(
-            child: Column(
-              children: [
-                Text("Aradığınızı bulamadınız mı?", style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                FilledButton.icon(
-                  onPressed: () { /* TODO: Canlı destek veya iletişim formu aç */ },
-                  icon: const Icon(Icons.chat_bubble_outline),
-                  label: const Text("Destek Ekibiyle İletişime Geç"),
+        itemCount: faqData.length,
+        itemBuilder: (context, index) {
+          return Card(
+            elevation: 2.0,
+            margin: const EdgeInsets.symmetric(vertical: 8.0),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.0),
+            ),
+            child: ExpansionTile(
+              shape: const Border(),
+              title: Text(
+                faqData[index]['question']!,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(height: 8),
-                const Text("(Yakında eklenecek Chatbot ile 7/24 destek)", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey)),
+              ),
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+                  child: Text(
+                    faqData[index]['answer']!,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey[700],
+                      height: 1.5,
+                    ),
+                  ),
+                )
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFaqSection(BuildContext context, {required String title, required Map<String, String> questions}) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      clipBehavior: Clip.antiAlias,
-      child: ExpansionTile(
-        title: Text(title, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-        initiallyExpanded: true,
-        childrenPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8).copyWith(top: 0),
-        children: questions.entries.map((entry) {
-          return ExpansionTile(
-            shape: const Border(), // İçteki ayırıcı çizgiyi kaldırır
-            title: Text(entry.key, style: theme.textTheme.titleMedium),
-            childrenPadding: const EdgeInsets.all(16).copyWith(top: 0),
-            children: [
-              Text(
-                entry.value,
-                style: theme.textTheme.bodyMedium?.copyWith(height: 1.5, color: Colors.grey.shade700),
-              )
-            ],
           );
-        }).toList(),
+        },
       ),
     );
   }

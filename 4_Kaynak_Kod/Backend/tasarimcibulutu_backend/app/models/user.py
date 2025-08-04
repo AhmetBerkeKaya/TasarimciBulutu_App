@@ -1,12 +1,42 @@
 # app/models/user.py
+
 import enum
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import (Column, String, Boolean, DateTime, Enum as SQLAlchemyEnum, Text, func)
+from sqlalchemy import (Column, String, Boolean, DateTime, Enum as SQLAlchemyEnum, Text, TypeDecorator)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
 from .skill import user_skill_association
+from app.utils import encryption # Yeni şifreleme yardımcımızı import ediyoruz
+from cryptography.fernet import InvalidToken # Hata yakalamak için
+
+# ================== YENİ CUSTOM COLUMN TYPE ==================
+class EncryptedString(TypeDecorator):
+    """
+    Veritabanına yazarken veriyi şifreleyen ve okurken çözen
+    özel bir SQLAlchemy kolon tipi.
+    """
+    impl = String
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        # Veritabanına bir değer yazılırken bu fonksiyon çalışır.
+        if value is not None:
+            return encryption.encrypt(str(value))
+        return value
+
+    def process_result_value(self, value, dialect):
+        # Veritabanından bir değer okunurken bu fonksiyon çalışır.
+        if value is not None:
+            try:
+                return encryption.decrypt(str(value))
+            except InvalidToken:
+                # Eğer veri şifreli değilse (eski veriler için),
+                # olduğu gibi döndür. Bu, geçiş sürecini kolaylaştırır.
+                return value
+        return value
+# =============================================================
 
 class UserRole(enum.Enum):
     admin = "admin"
@@ -20,18 +50,22 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     role = Column(SQLAlchemyEnum(UserRole), nullable=False, default=UserRole.freelancer)
-    name = Column(String, nullable=False)
-    bio = Column(Text, nullable=True)
+    
+    # ================== ANA DEĞİŞİKLİK BURADA ==================
+    # 'name' alanının tipini 'String' yerine 'EncryptedString' olarak değiştiriyoruz.
+    # Şifrelenmiş veri daha uzun olacağı için karakter limitini artırıyoruz.
+    name = Column(EncryptedString(512), nullable=False)
+    # =============================================================
+    
+    bio = Column(Text, nullable=True) # İstersen bio gibi alanları da EncryptedString yapabilirsin.
     profile_picture_url = Column(String, nullable=True)
     is_verified = Column(Boolean, default=False, nullable=False)
-    phone_number = Column(String(20), nullable=True)
+    phone_number = Column(EncryptedString(128), nullable=True) # Telefon numarasını da şifreleyelim.
     created_at = Column(DateTime(timezone=True), nullable=False)
     updated_at = Column(DateTime(timezone=True), nullable=False)
 
-    # --- YENİ: ŞİFRE SIFIRLAMA İÇİN ALANLAR ---
     reset_password_token: str | None = Column(String, nullable=True, index=True, unique=True)
     reset_password_token_expires_at: datetime | None = Column(DateTime(timezone=True), nullable=True)
-    # --- BİTTİ ---
 
     # --- İlişkiler (Değişiklik Yok) ---
     projects = relationship("Project", back_populates="owner")

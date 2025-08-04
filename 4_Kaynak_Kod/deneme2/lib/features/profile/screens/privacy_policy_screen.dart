@@ -1,60 +1,44 @@
-// ------------------------------------------------------------------
-// DOSYA 4: lib/features/profile/screens/privacy_policy_screen.dart (YENİ)
-// ------------------------------------------------------------------
+// =======================================================================
+// DOSYA 3: lib/features/profile/screens/privacy_policy_screen.dart
+// =======================================================================
 import 'package:flutter/material.dart';
+import '../widgets/legal_page_widget.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gizlilik Politikası'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildDisclaimer(context),
-            _buildSection(context, '1. Toplanan Veriler', 'Platforma kayıt olurken ve profilinizi oluştururken sağladığınız kişisel veriler (isim, e-posta, telefon numarası, yetkinlikler, portfolyo) sistemimizde saklanır.'),
-            _buildSection(context, '2. Verilerin Kullanımı', 'Toplanan veriler, hizmetlerimizi sunmak, sizi doğru projelerle veya freelancer\'larla eşleştirmek, platformu iyileştirmek ve sizinle iletişim kurmak amacıyla kullanılır.'),
-            _buildSection(context, '3. Verilerin Paylaşımı', 'Kişisel verileriniz, yasal zorunluluklar dışında, sizin açık rızanız olmadan üçüncü şahıslarla paylaşılmaz. Projeye başvurduğunuzda, profilinizdeki ilgili bilgiler proje sahibi firma ile paylaşılır.'),
-            _buildSection(context, '4. Veri Güvenliği', 'Verilerinizin güvenliğini sağlamak için endüstri standardı teknik ve idari güvenlik önlemleri alınmaktadır.'),
-          ],
+    return const LegalPageView(
+      pageTitle: 'Gizlilik Politikası',
+      sections: [
+        LegalSectionData(
+          title: '1. Veri Sorumlusunun Kimliği',
+          content:
+          '6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) uyarınca, kişisel verileriniz; veri sorumlusu olarak Tasarımcı Bulutu ("Platform") tarafından aşağıda açıklanan kapsamda işlenebilecektir.',
         ),
-      ),
-    );
-  }
-
-  Widget _buildSection(BuildContext context, String title, String content) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text(content, style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDisclaimer(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      margin: const EdgeInsets.only(bottom: 24),
-      decoration: BoxDecoration(
-        color: Colors.amber.shade50,
-        border: Border.all(color: Colors.amber.shade200),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: const Text(
-        'YASAL UYARI: Bu metinler sadece birer örnektir ve yasal geçerliliği yoktur. Gerçek bir uygulama için mutlaka bir hukuk danışmanıyla çalışarak kendi metinlerinizi oluşturmalısınız.',
-        textAlign: TextAlign.center,
-      ),
+        LegalSectionData(
+          title: '2. Kişisel Verilerin İşlenme Amaçları',
+          content:
+          'Toplanan kişisel verileriniz, platform hizmetlerinin sunulması, kullanıcı hesaplarının yönetimi, hizmet kalitesinin artırılması, yasal yükümlülüklerin yerine getirilmesi, platform güvenliğinin sağlanması, kullanıcılar arası iletişimin kolaylaştırılması ve size özel proje önerileri sunulması amaçlarıyla KVKK’nın 5. ve 6. maddelerinde belirtilen kişisel veri işleme şartları ve amaçları dahilinde işlenecektir.',
+        ),
+        LegalSectionData(
+          title: '3. İşlenen Kişisel Veri Kategorileri',
+          content:
+          'Platformumuz, kimlik bilgileriniz (ad, soyad), iletişim bilgileriniz (e-posta adresi, telefon numarası), mesleki deneyim bilgileriniz (portfolyo, yetenekler, iş geçmişi), işlem güvenliği bilgileriniz (IP adresi, log kayıtları) ve platformu kullanımınıza ilişkin diğer verileri işlemektedir.',
+        ),
+        LegalSectionData(
+          title: '4. Kişisel Verilerin Aktarılması',
+          content:
+          'Kişisel verileriniz, yasal zorunluluklar ve rızanız dışında üçüncü kişilerle paylaşılmaz. Ancak, hizmetlerin sağlanması amacıyla iş ortaklarımızla, tedarikçilerimizle ve yasal olarak yetkili kamu kurum ve kuruluşları ile KVKK’nın 8. ve 9. maddelerinde belirtilen şartlar çerçevesinde paylaşılabilecektir.',
+        ),
+        LegalSectionData(
+          title: '5. Kişisel Veri Sahibinin Hakları',
+          content:
+          'KVKK’nın 11. maddesi uyarınca veri sahibi olarak; kişisel verilerinizin işlenip işlenmediğini öğrenme, işlenmişse buna ilişkin bilgi talep etme, işlenme amacını ve bunların amacına uygun kullanılıp kullanılmadığını öğrenme, yurt içinde veya yurt dışında kişisel verilerin aktarıldığı üçüncü kişileri bilme, eksik veya yanlış işlenmiş olması hâlinde bunların düzeltilmesini isteme ve bu kapsamda yapılan işlemin kişisel verilerin aktarıldığı üçüncü kişilere bildirilmesini isteme, kanuna aykırı olarak işlenmesi sebebiyle zarara uğramanız hâlinde zararın giderilmesini talep etme haklarına sahipsiniz. Bu haklarınızı kullanmak için [destek@tasarimcibulutu.com] adresi üzerinden bizimle iletişime geçebilirsiniz.',
+          isLast: true,
+        ),
+      ],
     );
   }
 }

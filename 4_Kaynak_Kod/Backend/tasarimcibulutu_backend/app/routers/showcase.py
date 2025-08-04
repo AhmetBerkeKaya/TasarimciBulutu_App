@@ -1,3 +1,6 @@
+# =======================================================================
+# DOSYA 2: app/routers/showcase.py (Rate Limiting İyileştirildi)
+# =======================================================================
 import uuid
 import os
 from fastapi import APIRouter, Depends, HTTPException, status, Request
@@ -18,45 +21,33 @@ router = APIRouter(
     tags=["Showcase"]
 )
 
-# İzin verilen dosya uzantılarını tanımlıyoruz. Lambda sadece .zip kabul ediyor.
 ALLOWED_FILE_EXTENSIONS = {".zip"}
 
-
 @router.post("/posts/initialize-upload", response_model=schemas.showcase.ShowcasePostInitResponse)
+@limiter.limit("20/hour") # YENİ: Spam gönderi oluşturma denemelerini engeller
 def initialize_post_upload(
+    request: Request, # <-- Limiter için request parametresi eklendi
     post_init_data: schemas.showcase.ShowcasePostInit,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """
-    Yeni bir 3D modelli gönderi oluşturma sürecini başlatır.
-    1. Veritabanında PENDING durumunda bir gönderi oluşturur.
-    2. Ham dosyanın S3'e yüklenmesi için bir presigned URL döner.
-    """
-    # --- İYİLEŞTİRME: Dosya uzantısını sunucu tarafında kontrol et ---
     _, file_extension = os.path.splitext(post_init_data.original_filename.lower())
     if file_extension not in ALLOWED_FILE_EXTENSIONS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid file type. Allowed extensions are: {', '.join(ALLOWED_FILE_EXTENSIONS)}"
         )
-    # --- İYİLEŞTİRME SONU ---
 
-    # 1. Gönderiyi PENDING durumunda oluştur
     db_post = crud.showcase.create_showcase_post(db, post=post_init_data, user_id=current_user.id, status=ProcessingStatus.PENDING)
 
-    # 2. Ham dosyayı S3'e yüklemek için presigned URL oluştur
-    # Dosya uzantısını zaten yukarıda aldık, onu kullanalım.
     raw_file_key = f"uploads-raw/{db_post.id}{file_extension}"
 
-    # Orijinal dosyanın S3 URL'ini oluştur ve veritabanına kaydet
     raw_file_s3_url = f"https://{settings.AWS_S3_BUCKET_NAME}.s3.{settings.AWS_REGION}.amazonaws.com/{raw_file_key}"
     crud.showcase.update_post_raw_file_url(db, post_id=db_post.id, file_url=raw_file_s3_url)
     
     upload_data = s3_utils.create_presigned_post_url(
         bucket_name=settings.AWS_S3_BUCKET_NAME,
         object_name=raw_file_key,
-        # Dosya boyutu limitini 500MB'a çıkarabiliriz
         conditions=[["content-length-range", 1, 524288000]],
         expires_in=3600
     )
@@ -69,6 +60,7 @@ def initialize_post_upload(
         upload_data=schemas.showcase.PresignedUrlData(**upload_data)
     )
 
+# ... (dosyanın geri kalanı aynı, zaten limitleri vardı) ...
 @router.post("/posts", response_model=schemas.showcase.ShowcasePost, status_code=status.HTTP_201_CREATED)
 @limiter.limit("20/hour")
 def create_post(
@@ -77,7 +69,6 @@ def create_post(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    """Yeni bir vitrin gönderisi oluşturur."""
     return crud.showcase.create_showcase_post(db=db, post=post, user_id=current_user.id)
 
 @router.get("/posts", response_model=List[schemas.showcase.ShowcasePost])

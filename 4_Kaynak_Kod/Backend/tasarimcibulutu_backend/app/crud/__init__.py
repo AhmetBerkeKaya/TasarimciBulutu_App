@@ -5,6 +5,12 @@ from .user import (
     create_user,
     update_user,
     delete_user,
+    update_user_password,
+    get_user_by_phone_number,
+    get_user_by_reset_token,
+    reset_user_password,
+    authenticate_user,
+    remove_skill_from_user
 )
 
 from .project import (
@@ -47,3 +53,5 @@ from .test_result import create_test_result, get_test_result, calculate_and_comp
 from .review import get_review_by_reviewer_and_project, create_review
 
 from .showcase import get_showcase_post, create_showcase_post, delete_showcase_post, get_all_showcase_posts
+
+from .audit import create_audit_log

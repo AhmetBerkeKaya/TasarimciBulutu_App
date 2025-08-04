@@ -8,9 +8,9 @@ click==8.2.1
 colorama==0.4.6
 cryptography==45.0.5
 dnspython==2.7.0
-ecdsa==0.19.1
+ecdsa==0.18.0
 email_validator==2.2.0
-fastapi==0.115.14
+fastapi
 greenlet==3.2.3
 h11==0.16.0
 httpcore==1.0.9
@@ -36,8 +36,8 @@ rsa==4.9.1
 six==1.17.0
 sniffio==1.3.1
 SQLAlchemy==2.0.41
-starlette==0.46.2
+starlette
 typing-inspection==0.4.1
 typing_extensions==4.14.0
 uvicorn==0.34.3
-slowapi==0.0.14
+slowapi==0.1.9

@@ -1,3 +1,5 @@
+# app/config.py
+
 import os
 from pydantic import EmailStr
 from pydantic_settings import BaseSettings
@@ -20,6 +22,11 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     RESET_TOKEN_EXPIRE_MINUTES: int = 60
 
+    # ================== YENİ ALAN EKLENDİ ==================
+    # Veri şifreleme için kullanılacak 32 byte'lık URL-safe base64 kodlu anahtar.
+    ENCRYPTION_KEY: str
+    # =======================================================
+
     # E-posta Ayarları
     MAIL_USERNAME: str
     MAIL_PASSWORD: str
@@ -34,12 +41,10 @@ class Settings(BaseSettings):
     AWS_SECRET_ACCESS_KEY: str
     AWS_S3_BUCKET_NAME: str
     AWS_REGION: str
-
-    # --- YENİ EKLENEN KISIM ---
+    
     # Autodesk Platform Services (APS) AYARLARI
     APS_CLIENT_ID: str
     APS_CLIENT_SECRET: str
-    # --- YENİ EKLENEN KISIM SONU ---
 
     class Config:
         env_file = ".env"

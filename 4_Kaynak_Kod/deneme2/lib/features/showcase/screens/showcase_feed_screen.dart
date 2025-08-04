@@ -281,15 +281,16 @@ class _ShowcaseFeedScreenState extends State<ShowcaseFeedScreen>
           ),
         ),
         title: Text(
-          'Proje Vitrini',
+          '',
           style: TextStyle(
             color: theme.primaryColor,
             fontWeight: FontWeight.w700,
-            fontSize: 20,
+            fontSize: 19,
+            letterSpacing: -0.5,
           ),
         ),
         centerTitle: false,
-        titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
+        titlePadding: const EdgeInsets.only(left: 106, bottom: 45),
       ),
       actions: [
         _buildGlassActionButton(
@@ -814,7 +815,7 @@ class _ShowcaseFeedScreenState extends State<ShowcaseFeedScreen>
               heroTag: "create_post",
               icon: const Icon(Icons.add_rounded, size: 24),
               label: const Text(
-                'Proje Paylaş',
+                'Gönderi Oluştur',
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 16,

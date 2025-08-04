@@ -1,15 +1,16 @@
-// ------------------------------------------------------------------
+// =======================================================================
 // DOSYA 1: lib/features/profile/screens/settings_screen.dart (Nihai Hali)
-// ------------------------------------------------------------------
+// AÇIKLAMA: Yeni yasal sayfalara yönlendirmeler eklenmiş ayarlar ekranı.
+// =======================================================================
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/providers/theme_provider.dart';
 import 'change_password_screen.dart';
 import 'edit_profile_screen.dart';
-import 'help_center_screen.dart'; // <-- Yeni ekran
-import 'privacy_policy_screen.dart'; // <-- Yeni ekran
-import 'terms_of_service_screen.dart'; // <-- Yeni ekran
+import 'help_center_screen.dart'; // <-- Yeni ekran importu
+import 'privacy_policy_screen.dart'; // <-- Yeni ekran importu
+import 'terms_of_service_screen.dart'; // <-- Yeni ekran importu
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -20,7 +21,7 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Ayarlar'),
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        elevation: 0,
+        elevation: 1,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
