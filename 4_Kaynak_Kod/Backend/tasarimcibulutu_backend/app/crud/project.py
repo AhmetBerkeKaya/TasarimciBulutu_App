@@ -3,7 +3,7 @@ from uuid import UUID
 from typing import List
 from datetime import datetime, timezone
 from sqlalchemy import desc, asc
-
+from app.models.skill import Skill
 from app import models, schemas
 from app.models.project import ProjectStatus
 from app.models.application import ApplicationStatus # ApplicationStatus'u import et
@@ -79,15 +79,28 @@ def get_projects_for_freelancer(db: Session, user_id: UUID) -> List[models.Proje
 
 # --- PROJE OLUŞTURMA, GÜNCELLEME, SİLME VE YAŞAM DÖNGÜSÜ FONKSİYONLARI ---
 
+# --- BU FONKSİYON GÜNCELLENDİ ---
 def create_project(db: Session, project: schemas.ProjectCreate, owner_id: UUID) -> models.Project:
+    # 1. Gelen veriden yetenek ID'lerini ayır
+    skill_ids = project.required_skill_ids
+    project_data = project.model_dump(exclude={'required_skill_ids'}) # Yetenekler hariç diğer veriler
+
     current_time = datetime.now(timezone.utc)
+    
+    # 2. Projeyi yetenekler olmadan oluştur
     db_project = models.Project(
-        **project.model_dump(),
+        **project_data,
         user_id=owner_id,
         status=ProjectStatus.OPEN.value,
         created_at=current_time,
         updated_at=current_time
     )
+
+    # 3. Eğer yetenek ID'leri geldiyse, onları bul ve projeye ekle
+    if skill_ids:
+        skills = db.query(Skill).filter(Skill.id.in_(skill_ids)).all()
+        db_project.required_skills.extend(skills)
+
     db.add(db_project)
     db.commit()
     db.refresh(db_project)

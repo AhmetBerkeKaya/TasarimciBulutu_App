@@ -1,9 +1,11 @@
 // lib/features/projects/screens/create_project_screen.dart
+import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/auth_provider.dart';
-import '../../../core/services/api_service.dart'; // ApiService'i import et
+import '../../../core/services/api_service.dart';
+import '../../../data/models/skill_model.dart'; // ApiService'i import et
 
 class CreateProjectScreen extends StatefulWidget {
   const CreateProjectScreen({super.key});
@@ -25,6 +27,33 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
   bool _isLoading = false;
   final ApiService _apiService = ApiService();
 
+  List<Skill> _allSkills = [];
+  final List<Skill> _selectedSkills = [];
+  bool _skillsLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSkills();
+  }
+  Future<void> _fetchSkills() async {
+    try {
+      final skills = await _apiService.getSkills();
+      if (mounted) {
+        setState(() {
+          _allSkills = skills;
+          _skillsLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _skillsLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Yetenekler yüklenemedi.')),
+        );
+      }
+    }
+  }
   Future<void> _submitProject() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
@@ -36,6 +65,9 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
         return;
       }
 
+      // Seçilen yeteneklerin ID'lerini bir listeye topla
+      final selectedSkillIds = _selectedSkills.map((skill) => skill.id).toList();
+
       final success = await _apiService.createProject(
         title: _titleController.text,
         description: _descriptionController.text,
@@ -43,6 +75,7 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
         budgetMin: int.tryParse(_budgetMinController.text),
         budgetMax: int.tryParse(_budgetMaxController.text),
         deadline: _selectedDeadline,
+        skillIds: selectedSkillIds, // ID'leri gönder
       );
 
       if (mounted) {
@@ -81,10 +114,8 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
 
   @override
   void dispose() {
-    // Controller'ları dispose etmeyi unutma!
     _titleController.dispose();
     _descriptionController.dispose();
-    // ... diğerleri
     super.dispose();
   }
 
@@ -112,6 +143,43 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
                 validator: (value) => value!.isEmpty ? 'Lütfen bir kategori belirtin.' : null,
               ),
               const SizedBox(height: 16),
+              // --- YENİ YETENEK SEÇİM ALANI ---
+              DropdownSearch<Skill>.multiSelection(
+                items: _allSkills,
+                itemAsString: (Skill s) => s.name, // Listede nasıl görünecek
+                selectedItems: _selectedSkills,
+                onChanged: (List<Skill> skills) {
+                  setState(() {
+                    _selectedSkills.clear();
+                    _selectedSkills.addAll(skills);
+                  });
+                },
+                dropdownDecoratorProps: DropDownDecoratorProps(
+                  dropdownSearchDecoration: InputDecoration(
+                    labelText: "Gerekli Yetenekler",
+                    hintText: "Proje için gerekli yetenekleri seçin",
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                ),
+                popupProps: PopupPropsMultiSelection.menu(
+                  showSearchBox: true,
+                  searchFieldProps: TextFieldProps(
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      hintText: "Yetenek ara...",
+                    ),
+                  ),
+                ),
+                validator: (List<Skill>? items) {
+                  if (items == null || items.isEmpty) {
+                    return "En az bir yetenek seçmelisiniz.";
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+
               TextFormField(
                 controller: _descriptionController,
                 decoration: const InputDecoration(labelText: 'Proje Açıklaması', alignLabelWithHint: true),

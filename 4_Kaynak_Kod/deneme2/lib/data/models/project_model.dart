@@ -4,7 +4,8 @@ import 'package:collection/collection.dart';
 import 'review_model.dart';
 import 'application_model.dart';
 import 'user_summary_model.dart';
-import 'enums.dart'; // ApplicationStatus için
+import 'enums.dart';
+import 'skill_model.dart'; // <-- YENİ: Skill modelini import ediyoruz
 
 class Project {
   final String id;
@@ -19,6 +20,7 @@ class Project {
   final List<Review> reviews;
   final String category;
   final DateTime createdAt;
+  final List<Skill> requiredSkills; // <-- YENİ: Gerekli yetenekler listesi
 
   Project({
     required this.id,
@@ -33,6 +35,7 @@ class Project {
     required this.reviews,
     required this.category,
     required this.createdAt,
+    required this.requiredSkills, // <-- YENİ
   });
 
   Application? get acceptedApplication => applications.firstWhereOrNull(
@@ -57,8 +60,12 @@ class Project {
     }
 
     // Tarih alanlarını çökmeden, güvenli bir şekilde oku
-    DateTime? deadline = json['deadline'] != null ? DateTime.tryParse(json['deadline'].toString()) : null;
-    DateTime createdAt = json['created_at'] != null ? DateTime.parse(json['created_at'].toString()) : DateTime.now();
+    DateTime? deadline = json['deadline'] != null
+        ? DateTime.tryParse(json['deadline'].toString())
+        : null;
+    DateTime createdAt = json['created_at'] != null
+        ? DateTime.parse(json['created_at'].toString())
+        : DateTime.now();
 
     return Project(
       id: json['id']?.toString() ?? '',
@@ -67,12 +74,25 @@ class Project {
       budgetMin: (json['budget_min'] as num?)?.toInt(),
       budgetMax: (json['budget_max'] as num?)?.toInt(),
       deadline: deadline,
-      owner: json['owner'] != null ? UserSummary.fromJson(json['owner']) : UserSummary(id: '', name: 'Bilinmeyen Firma'),
-      applications: (json['applications'] as List<dynamic>?)?.map((appJson) => Application.fromJson(appJson)).toList() ?? [],
-      reviews: (json['reviews'] as List<dynamic>?)?.map((reviewJson) => Review.fromJson(reviewJson)).toList() ?? [],
+      owner: json['owner'] != null
+          ? UserSummary.fromJson(json['owner'])
+          : UserSummary(id: '', name: 'Bilinmeyen Firma'),
+      applications: (json['applications'] as List<dynamic>?)
+          ?.map((appJson) => Application.fromJson(appJson))
+          .toList() ??
+          [],
+      reviews: (json['reviews'] as List<dynamic>?)
+          ?.map((reviewJson) => Review.fromJson(reviewJson))
+          .toList() ??
+          [],
       status: status,
       category: json['category']?.toString() ?? 'Genel',
       createdAt: createdAt,
+      // <-- YENİ: Gelen JSON'daki 'required_skills' listesini parse ediyoruz
+      requiredSkills: (json['required_skills'] as List<dynamic>?)
+          ?.map((skillJson) => Skill.fromJson(skillJson))
+          .toList() ??
+          [],
     );
   }
 }

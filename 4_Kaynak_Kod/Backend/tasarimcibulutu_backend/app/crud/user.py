@@ -59,9 +59,26 @@ def create_user(db: Session, user: schemas.UserCreate) -> models.User:
         updated_at=current_time
     )
     db.add(db_user)
-    # Yeni kullanıcı oluşturulduğunda da bir denetim kaydı ekleyelim
-    audit_crud.create_audit_log(db, user_id=db_user.id, action="USER_CREATED")
+
+    # --- DÜZELTME BURADA BAŞLIYOR ---
+
+    # 1. Değişiklikleri veritabanına göndererek db_user.id'nin oluşmasını sağla.
+    db.flush()
+
+    # 2. Artık db_user.id geçerli bir UUID'ye sahip. Denetim kaydını şimdi oluştur.
+    # Not: İşlemi yapan kişi (actor) da yeni kullanıcının kendisidir.
+    audit_crud.create_audit_log(
+        db, 
+        user_id=db_user.id, 
+        actor_id=db_user.id, # actor_id'yi de eklemek iyi bir pratiktir
+        action="USER_CREATED"
+    )
+
+    # 3. Tüm işlemleri kalıcı hale getir.
     db.commit()
+
+    # --- DÜZELTME BURADA BİTİYOR ---
+    
     db.refresh(db_user)
     return db_user
 

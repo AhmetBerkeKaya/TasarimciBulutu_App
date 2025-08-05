@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import '../../data/models/application_model.dart';
@@ -283,15 +284,36 @@ class ApiService {
     }
   }
 
-  Future<bool> createProject({required String title, required String description, required String category, int? budgetMin, int? budgetMax, DateTime? deadline}) async {
+  // GÜNCELLENMİŞ METOT: Artık yetenek ID'lerini de kabul ediyor
+  Future<bool> createProject({
+    required String title,
+    required String description,
+    required String category,
+    int? budgetMin,
+    int? budgetMax,
+    DateTime? deadline,
+    required List<String> skillIds, // <-- YENİ PARAMETRE
+  }) async {
     try {
-      await _dio.post('/projects/', data: {
-        'title': title, 'description': description, 'category': category,
-        'budget_min': budgetMin, 'budget_max': budgetMax,
-        'deadline': deadline?.toIso8601String(),
-      });
-      return true;
-    } on DioException { return false; }
+      final response = await _dio.post(
+        '/projects/',
+        data: {
+          'title': title,
+          'description': description,
+          'category': category,
+          'budget_min': budgetMin,
+          'budget_max': budgetMax,
+          'deadline': deadline?.toIso8601String(),
+          'required_skill_ids': skillIds, // <-- YENİ ALAN
+        },
+      );
+      return response.statusCode == 201;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Proje oluşturma hatası: $e');
+      }
+      return false;
+    }
   }
 
   Future<List<Project>> getProjects({String? searchQuery, String? category, int? minBudget, int? maxBudget, String? sortBy}) async {
@@ -581,5 +603,20 @@ class ApiService {
       return TestResult.fromJson(response.data);
     } on DioException { return null; }
   }
-
+  Future<List<Skill>> getSkills() async {
+    final response = await _dio.get('/skills/');
+    final List<dynamic> data = response.data;
+    return data.map((json) => Skill.fromJson(json)).toList();
+  }
+  Future<List<Project>> getRecommendedProjects() async {
+    try {
+      final response = await _dio.get('/recommendations/me');
+      // Backend'den {score, project} şeklinde bir liste gelecek, biz sadece proje kısmını alıyoruz.
+      return (response.data as List)
+          .map((item) => Project.fromJson(item['project']))
+          .toList();
+    } on DioException {
+      return [];
+    }
+  }
 }

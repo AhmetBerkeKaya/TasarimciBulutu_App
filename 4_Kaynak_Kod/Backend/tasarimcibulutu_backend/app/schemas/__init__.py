@@ -14,6 +14,7 @@ from .notification import Notification, NotificationBase, NotificationCreate, No
 from .skill import Skill, SkillBase, SkillCreate
 from .skill_test import SkillTest, SkillTestBase, SkillTestCreate, SkillTestSimple
 from .showcase import ShowcasePost, ShowcasePostBase, ShowcasePostCreate, ShowcasePostUpdate, UserSummary, ShowcasePostInit, ShowcasePostInitResponse, ProcessingStatus
+from .recommendation import ProjectRecommendationOut
 # 2. Tüm şemalar import edildikten sonra, Forward Reference'ları çöz
 User.model_rebuild()
 Review.model_rebuild()

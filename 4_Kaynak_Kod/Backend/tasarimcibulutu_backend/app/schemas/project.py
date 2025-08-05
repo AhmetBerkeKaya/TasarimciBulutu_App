@@ -17,7 +17,10 @@ class ProjectBase(BaseModel):
     deadline: Optional[datetime] = None
 
 class ProjectCreate(ProjectBase):
-    pass
+    # --- YENİ ALAN EKLENDİ ---
+    # Flutter'dan gelen yetenek ID'lerinin listesi
+    required_skill_ids: List[uuid.UUID] = []
+    # --- BİTTİ ---
 
 class ProjectUpdate(BaseModel):
     title: Optional[str] = None

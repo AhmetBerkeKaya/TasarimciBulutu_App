@@ -35,7 +35,10 @@ class ProjectProvider with ChangeNotifier {
   String? get activeSortBy => _activeSortBy;
   int? get activeMinBudget => _activeMinBudget;
   int? get activeMaxBudget => _activeMaxBudget;
-
+  List<Project> _recommendedProjects = [];
+  List<Project> get recommendedProjects => _recommendedProjects;
+  bool _isRecommendationsLoading = false;
+  bool get isRecommendationsLoading => _isRecommendationsLoading;
   void updateToken(String? newToken) {
     _token = newToken;
   }
@@ -164,5 +167,19 @@ class ProjectProvider with ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+  // --- YENİ FONKSİYON ---
+  Future<void> fetchRecommendedProjects() async {
+    if (_token == null) return;
+    _isRecommendationsLoading = true;
+    notifyListeners();
+    try {
+      _recommendedProjects = await _apiService.getRecommendedProjects();
+    } catch (e) {
+      // Hata durumunda listeyi boşalt
+      _recommendedProjects = [];
+    }
+    _isRecommendationsLoading = false;
+    notifyListeners();
   }
 }
