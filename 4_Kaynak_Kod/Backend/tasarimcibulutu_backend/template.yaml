@@ -1,11 +1,29 @@
-# template.yaml (ORTAM DEĞİŞKENLERİ EKLENMİŞ SON VERSİYON)
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
   TasarimciBulutu Backend: 3D Model Processor and Recommendation Engine
 
+# Globals: Tüm fonksiyonlar için ortak ayarlar.
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures: [x86_64]
+    VpcConfig:
+      SecurityGroupIds: !Split [',', !Ref SecurityGroupIds]
+      SubnetIds: !Ref SubnetIds
+    Environment:
+      Variables:
+        DATABASE_URL: !Ref DatabaseUrl
+        SECRET_KEY: !Ref SecretKey
+        ENCRYPTION_KEY: !Ref EncryptionKey
+        MAIL_USERNAME: !Ref MailUsername
+        MAIL_PASSWORD: !Ref MailPassword
+        MAIL_FROM: !Ref MailFrom
+        MAIL_PORT: !Ref MailPort
+        MAIL_SERVER: !Ref MailServer
+        AWS_S3_BUCKET_NAME: !Ref S3BucketName
+
 Parameters:
-  # --- MEVCUT PARAMETRELER ---
   S3BucketName:
     Type: String
   DatabaseUrl:
@@ -17,7 +35,6 @@ Parameters:
     Type: List<AWS::EC2::Subnet::Id>
   SecurityGroupIds:
     Type: String
-  # --- YENİ EKLENEN PARAMETRELER ---
   SecretKey:
     Type: String
     NoEcho: true
@@ -48,60 +65,30 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: TasarimciBulutu-ModelProcessor
+      # --- CodeUri BURADA BELİRTİLMELİ ---
       CodeUri: .
       Handler: model_processor.lambda_function.lambda_handler
-      Runtime: python3.12
-      Architectures: [x86_64]
       Timeout: 900
       MemorySize: 1024
-      VpcConfig:
-        SecurityGroupIds: !Split [',',!Ref SecurityGroupIds]
-        SubnetIds: !Ref SubnetIds
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref S3BucketName
       Environment:
         Variables:
-          # --- TÜM ORTAM DEĞİŞKENLERİ EKLENDİ ---
-          DATABASE_URL: !Ref DatabaseUrl
-          SECRET_KEY: !Ref SecretKey
-          ENCRYPTION_KEY: !Ref EncryptionKey
-          MAIL_USERNAME: !Ref MailUsername
-          MAIL_PASSWORD: !Ref MailPassword
-          MAIL_FROM: !Ref MailFrom
-          MAIL_PORT: !Ref MailPort
-          MAIL_SERVER: !Ref MailServer
-          AWS_S3_BUCKET_NAME: !Ref S3BucketName
+          # Sadece bu fonksiyona özel değişkenler:
+          PROCESSED_BUCKET_NAME: !Ref S3BucketName 
           APS_CLIENT_ID: !Ref ApsClientId
           APS_CLIENT_SECRET: !Ref ApsClientSecret
-
+      
   RecommenderFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: TasarimciBulutu-Recommender
+      # --- CodeUri BURADA DA BELİRTİLMELİ ---
       CodeUri: .
       Handler: recommender_lambda.handler.handler
-      Runtime: python3.12
-      Architectures: [x86_64]
       Timeout: 300
       MemorySize: 256
-      VpcConfig:
-        SecurityGroupIds: !Split [',', !Ref SecurityGroupIds]
-        SubnetIds: !Ref SubnetIds
-      Environment:
-        Variables:
-          # --- TÜM ORTAM DEĞİŞKENLERİ EKLENDİ ---
-          DATABASE_URL: !Ref DatabaseUrl
-          SECRET_KEY: !Ref SecretKey
-          ENCRYPTION_KEY: !Ref EncryptionKey
-          MAIL_USERNAME: !Ref MailUsername
-          MAIL_PASSWORD: !Ref MailPassword
-          MAIL_FROM: !Ref MailFrom
-          MAIL_PORT: !Ref MailPort
-          MAIL_SERVER: !Ref MailServer
-          AWS_S3_BUCKET_NAME: !Ref S3BucketName
-          APS_CLIENT_ID: !Ref ApsClientId
-          APS_CLIENT_SECRET: !Ref ApsClientSecret
       Events:
         ScheduledTrigger:
           Type: Schedule
