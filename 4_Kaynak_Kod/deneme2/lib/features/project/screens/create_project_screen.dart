@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/project_provider.dart';
 import '../../../core/services/api_service.dart';
 import '../../../data/models/skill_model.dart'; // ApiService'i import et
 
@@ -24,12 +25,11 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
   final _deadlineController = TextEditingController();
 
   DateTime? _selectedDeadline;
-  bool _isLoading = false;
-  final ApiService _apiService = ApiService();
 
   List<Skill> _allSkills = [];
   final List<Skill> _selectedSkills = [];
   bool _skillsLoading = true;
+  final ApiService _apiService = ApiService();
 
   @override
   void initState() {
@@ -56,43 +56,35 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
   }
   Future<void> _submitProject() async {
     if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-
-      final token = Provider.of<AuthProvider>(context, listen: false).token;
-      if (token == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lütfen tekrar giriş yapın.')));
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      // Seçilen yeteneklerin ID'lerini bir listeye topla
       final selectedSkillIds = _selectedSkills.map((skill) => skill.id).toList();
 
-      final success = await _apiService.createProject(
+      // DİKKAT: Artık ApiService yerine Provider'ı çağırıyoruz.
+      final success = await Provider.of<ProjectProvider>(context, listen: false).createProject(
         title: _titleController.text,
         description: _descriptionController.text,
         category: _categoryController.text,
         budgetMin: int.tryParse(_budgetMinController.text),
         budgetMax: int.tryParse(_budgetMaxController.text),
         deadline: _selectedDeadline,
-        skillIds: selectedSkillIds, // ID'leri gönder
+        skillIds: selectedSkillIds,
       );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(success ? 'Proje başarıyla yayınlandı!' : 'Proje oluşturulurken bir hata oluştu.'),
-            backgroundColor: success ? Colors.green : Colors.red,
-          ),
-        );
-        if (success) {
-          Navigator.of(context).pop();
-        }
-      }
+      if (!mounted) return;
 
-      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success ? 'Proje başarıyla yayınlandı!' : 'Proje oluşturulurken bir hata oluştu.'),
+          backgroundColor: success ? Colors.green : Colors.red,
+        ),
+      );
+
+      if (success) {
+        // Başarılı olursa bir önceki sayfaya (proje listesine) dön
+        Navigator.of(context).pop();
+      }
     }
   }
+
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -122,6 +114,7 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final projectProvider = context.watch<ProjectProvider>();
     return Scaffold(
       appBar: AppBar(title: const Text('Yeni Proje Yayınla')),
       body: SingleChildScrollView(
@@ -218,8 +211,11 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
               ),
               const SizedBox(height: 32),
               ElevatedButton(
-                onPressed: _isLoading ? null : _submitProject,
-                child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('PROJEYİ YAYINLA'),
+                // Yüklenme durumunu artık provider'dan dinliyoruz
+                onPressed: projectProvider.isLoading ? null : _submitProject,
+                child: projectProvider.isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('PROJEYİ YAYINLA'),
               ),
             ],
           ),

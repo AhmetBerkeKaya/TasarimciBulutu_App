@@ -43,7 +43,54 @@ class ProjectProvider with ChangeNotifier {
     _token = newToken;
   }
 
-  // --- FONKSİYONLAR ---
+  // YENİ EKLENEN FONKSİYON
+  Future<bool> createProject({
+    required String title,
+    required String description,
+    required String category,
+    required List<String> skillIds,
+    int? budgetMin,
+    int? budgetMax,
+    DateTime? deadline,
+  }) async {
+    if (_token == null) {
+      _errorMessage = "İşlem yapmak için giriş yapmalısınız.";
+      notifyListeners();
+      return false;
+    }
+
+    _isLoading = true; // İşlemin başladığını UI'a bildir
+    notifyListeners();
+
+    try {
+      // Proje oluşturma isteğini API servisine gönder
+      await _apiService.createProject(
+        title: title,
+        description: description,
+        category: category,
+        budgetMin: budgetMin,
+        budgetMax: budgetMax,
+        deadline: deadline,
+        skillIds: skillIds,
+      );
+
+      // BAŞARILI! En kritik adım:
+      // Proje listesini yeniden çekerek arayüzün güncellenmesini sağla.
+      await fetchOpenProjects();
+
+      // Aynı zamanda "Projelerim" panelinin de güncel olması için bunu da çekelim.
+      await fetchMyProjects();
+
+      // Not: fetch... fonksiyonları zaten `_isLoading = false` ve `notifyListeners()` çağırıyor.
+      return true;
+
+    } catch (e) {
+      _errorMessage = "Proje oluşturulurken bir hata oluştu: ${e.toString()}";
+      _isLoading = false; // Hata durumunda yükleniyor durumunu kapat
+      notifyListeners();
+      return false;
+    }
+  }
 
   // Genel proje ilanlarını filtre ve sıralama ile çeker.
   Future<void> fetchOpenProjects() async {
