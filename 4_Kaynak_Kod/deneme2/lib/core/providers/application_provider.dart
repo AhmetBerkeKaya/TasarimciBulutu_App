@@ -50,27 +50,37 @@ class ApplicationProvider with ChangeNotifier {
     required String coverLetter,
     double? proposedBudget,
   }) async {
-    if (_token == null) return false;
-
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
-    final success = await _apiService.applyToProject(
-      projectId: projectId,
-      coverLetter: coverLetter,
-      proposedBudget: proposedBudget,
-    );
-
-    if (success) {
-      await fetchMyApplications(); // Başarılı olursa listeyi yenile
-    } else {
-      _errorMessage = "Başvuru gönderilirken bir hata oluştu.";
+    if (_token == null) {
+      _errorMessage = "İşlem yapmak için giriş yapmalısınız.";
+      notifyListeners();
+      return false;
     }
 
-    _isLoading = false;
+    _isLoading = true;
+    _errorMessage = null; // Eski hataları temizle
     notifyListeners();
-    return success;
+
+    try {
+      // ApiService'in hata fırlatacağını varsayarak try-catch kullanıyoruz.
+      // Eğer fırlatmıyorsa, ApiService'i de buna göre düzenlemek gerekir.
+      await _apiService.applyToProject(
+        projectId: projectId,
+        coverLetter: coverLetter,
+        proposedBudget: proposedBudget,
+      );
+
+      // Başarılı olursa, arayüzü güncellemek için başvuruları yeniden çek.
+      await fetchMyApplications();
+      // Not: Bu işlem başarılı olduğunda `isLoading` zaten false'a çekiliyor
+      // ve `notifyListeners` çağrılıyor, bu yüzden burada tekrar yapmaya gerek yok.
+      return true;
+
+    } catch (e) {
+      _errorMessage = "Başvuru gönderilirken bir hata oluştu. Lütfen tekrar deneyin.";
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
   Future<bool> updateApplicationStatus({
     required String applicationId,

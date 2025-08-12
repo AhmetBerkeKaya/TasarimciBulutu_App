@@ -74,6 +74,14 @@ def get_applications_by_freelancer(db: Session, freelancer_id: str) -> List[mode
         joinedload(models.Application.freelancer)
     ).filter(models.Application.freelancer_id == freelancer_id).all()
 
+def get_application_by_project_and_freelancer(db: Session, project_id: UUID, freelancer_id: UUID) -> models.Application | None:
+    """
+    Belirli bir freelancer'ın belirli bir projeye daha önce başvurup başvurmadığını kontrol eder.
+    """
+    return db.query(models.Application).filter(
+        models.Application.project_id == project_id,
+        models.Application.freelancer_id == freelancer_id
+    ).first()
 
 def create_application(db: Session, application: schemas.ApplicationCreate, freelancer_id: UUID) -> models.Application:
     db_application = models.Application(

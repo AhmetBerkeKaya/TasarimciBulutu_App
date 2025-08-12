@@ -31,8 +31,7 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/", response_model=schemas.Application, status_code=201)
-# Bir freelancer'ın saatte 20'den fazla başvuru yapması spam sayılır.
+@router.post("/", response_model=schemas.Application, status_code=status.HTTP_201_CREATED)
 @limiter.limit("20/hour")
 def create_application(
     request: Request,
@@ -40,11 +39,28 @@ def create_application(
     db: Session = Depends(get_db), 
     current_user: UserModel = Depends(get_current_user)
 ):
+    # Rol kontrolü
     if current_user.role != UserRole.freelancer:
         raise HTTPException(
-            status_code=403,
-            detail="Only freelancers can submit applications."
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Sadece freelancer'lar başvuru yapabilir."
         )
+
+    # --- YENİ KONTROL ADIMI ---
+    # Kullanıcının bu projeye zaten başvurup başvurmadığını veritabanından kontrol et
+    existing_application = crud.application.get_application_by_project_and_freelancer(
+        db, project_id=application.project_id, freelancer_id=current_user.id
+    )
+    
+    # Eğer başvuru varsa, 409 Conflict hatası döndür
+    if existing_application:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Bu projeye zaten başvurdunuz."
+        )
+    # --- KONTROL BİTTİ ---
+
+    # Kontrol başarılıysa yeni başvuruyu oluştur
     return crud.application.create_application(
         db=db, application=application, freelancer_id=current_user.id
     )

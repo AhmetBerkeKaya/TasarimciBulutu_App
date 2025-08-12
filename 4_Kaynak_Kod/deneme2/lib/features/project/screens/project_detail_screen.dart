@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../../../common_widgets/status_chip.dart';
+import '../../../core/providers/application_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/project_provider.dart';
 import '../../../data/models/enums.dart';
@@ -21,7 +22,12 @@ class ProjectDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // --- DEĞİŞİKLİK BURADA BAŞLIYOR ---
+
+    // Artık hem AuthProvider'ı hem de ApplicationProvider'ı dinliyoruz.
     final authProvider = context.watch<AuthProvider>();
+    final applicationProvider = context.watch<ApplicationProvider>(); // <-- YENİ EKLENDİ
+
     final currentUser = authProvider.user;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -40,8 +46,13 @@ class ProjectDetailScreen extends StatelessWidget {
     project.reviews.any((review) => review.reviewer.id == currentUser.id);
     final bool isFreelancer = currentUser.role == UserRole.freelancer;
     final bool isProjectOpen = project.status == ProjectStatus.open;
-    final bool hasAlreadyApplied =
-    project.applications.any((app) => app.freelancer.id == currentUser.id);
+
+    // 'hasAlreadyApplied' mantığını canlı veriyle güncelliyoruz.
+    // Provider'daki `myApplications` listesinde bu projenin ID'si var mı diye kontrol et.
+    final bool hasAlreadyApplied = applicationProvider.myApplications
+        .any((app) => app.project.id == project.id); // <-- MANTIK DEĞİŞTİ
+
+    // --- DEĞİŞİKLİK BURADA BİTİYOR ---
 
     return Scaffold(
       // Body'nin AppBar'ın arkasına uzanmasını sağlayarak modern bir görünüm elde ediyoruz
