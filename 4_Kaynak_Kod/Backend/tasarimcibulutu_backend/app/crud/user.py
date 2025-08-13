@@ -6,12 +6,14 @@ from app import models, schemas, security
 from passlib.context import CryptContext
 from datetime import datetime, timezone, timedelta
 import secrets
+from app import models, schemas, security, crud
+from app.models.notification import NotificationType
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import joinedload, subqueryload
 from app.models.user import User
 from app.models.skill import Skill
 from app.config import settings
-from . import audit as audit_crud # <-- YENİ: Denetim CRUD'unu import ediyoruz
+from . import audit as audit_crud
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -22,7 +24,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_user(db: Session, user_id: UUID) -> models.User | None:
-    # ... (içerik aynı) ...
     return db.query(models.User).options(
         subqueryload(models.User.skills),
         subqueryload(models.User.portfolio_items),
@@ -45,7 +46,6 @@ def authenticate_user(db: Session, email: str, password: str) -> models.User | N
     if not user or not security.verify_password(password, user.password_hash):
         return None
     return user
-
 def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     hashed_password = security.get_password_hash(user.password)
     current_time = datetime.now(timezone.utc)
@@ -60,29 +60,39 @@ def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     )
     db.add(db_user)
 
-    # --- DÜZELTME BURADA BAŞLIYOR ---
-
-    # 1. Değişiklikleri veritabanına göndererek db_user.id'nin oluşmasını sağla.
+    # Değişiklikleri veritabanına göndererek db_user.id'nin oluşmasını sağla.
     db.flush()
 
-    # 2. Artık db_user.id geçerli bir UUID'ye sahip. Denetim kaydını şimdi oluştur.
-    # Not: İşlemi yapan kişi (actor) da yeni kullanıcının kendisidir.
+    # Denetim kaydını oluştur.
     audit_crud.create_audit_log(
         db, 
         user_id=db_user.id, 
-        actor_id=db_user.id, # actor_id'yi de eklemek iyi bir pratiktir
+        actor_id=db_user.id,
         action="USER_CREATED"
     )
 
-    # 3. Tüm işlemleri kalıcı hale getir.
-    db.commit()
+    # --- YENİ BİLDİRİM MANTIĞI ---
+    try:
+        welcome_content = f"Tasarımcı Bulutu'na hoş geldin, {db_user.name}! Profilini tamamlayarak ilk projen için bir adım öne geçebilirsin."
+        crud.notification.create_notification(
+            db=db,
+            user_id=db_user.id, # Bildirimi alacak kişi yeni kullanıcının kendisi
+            type=NotificationType.WELCOME,
+            content=welcome_content
+            # actor_id yok, çünkü bu bir sistem bildirimi.
+            # related_entity_id yok, çünkü belirli bir yere yönlendirmiyor.
+        )
+    except Exception as e:
+        # Bildirim hatası kullanıcı oluşturma işlemini engellemesin.
+        print(f"Hoş geldin bildirimi oluşturulurken hata oluştu: {e}")
+    # --- BİLDİRİM MANTIĞI BİTTİ ---
 
-    # --- DÜZELTME BURADA BİTİYOR ---
+    # Tüm işlemleri (kullanıcı, denetim kaydı, bildirim) kalıcı hale getir.
+    db.commit()
     
     db.refresh(db_user)
     return db_user
 
-# ================== BU FONKSİYON GÜNCELLENDİ ==================
 def update_user(db: Session, user_id: UUID, user_update: schemas.UserUpdate) -> Optional[models.User]:
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
     if not db_user:

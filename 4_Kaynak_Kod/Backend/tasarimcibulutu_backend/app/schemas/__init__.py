@@ -10,7 +10,7 @@ from .work_experience import WorkExperience, WorkExperienceCreate, WorkExperienc
 from .test_result import TestResult, TestResultBase, TestResultCreate, TestStatus, TestSubmission, SkillTestSimple
 from .application import Application, ApplicationCreate, ApplicationStatus, ApplicationStatusUpdate, ProjectInApplication, ApplicationBase, ApplicationUpdate
 from .message import Message, MessageBase, MessageCreate, MessageUpdate, BaseModel
-from .notification import Notification, NotificationBase, NotificationCreate, NotificationUpdate
+from .notification import Notification, NotificationBase, UserSummary, NotificationType, UnreadNotificationCount, MarkAllReadResponse
 from .skill import Skill, SkillBase, SkillCreate
 from .skill_test import SkillTest, SkillTestBase, SkillTestCreate, SkillTestSimple
 from .showcase import ShowcasePost, ShowcasePostBase, ShowcasePostCreate, ShowcasePostUpdate, UserSummary, ShowcasePostInit, ShowcasePostInitResponse, ProcessingStatus

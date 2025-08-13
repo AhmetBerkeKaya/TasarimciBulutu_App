@@ -37,12 +37,11 @@ from .message import (
 )
 
 from .notification import (
-    get_notification,
-    get_notifications,
     get_notifications_by_user,
     create_notification,
-    update_notification,
-    delete_notification,
+    mark_notification_as_read,
+    mark_all_notifications_as_read,
+    get_unread_notification_count,
 )
 
 from .skill_test import get_skill_test, get_skill_tests, create_skill_test

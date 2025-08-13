@@ -291,7 +291,23 @@ class AuthProvider with ChangeNotifier {
     }
     return false;
   }
+  // BU FONKSİYONU GÜNCELLE
+  Future<void> refreshUserData() async {
+    if (_token == null) return; // Token yoksa işlem yapma
 
+    try {
+      // --- DÜZELTME BURADA ---
+      // getMe fonksiyonu AuthService'in içinde olduğu için _authService kullanılmalı.
+      final updatedUser = await _authService.getMe();
+      // --- DÜZELTME BİTTİ ---
+
+      _user = updatedUser;
+      notifyListeners(); // Değişikliği dinleyen widget'lara haber ver
+    } catch (e) {
+      print("Kullanıcı verisi yenilenirken hata oluştu: $e");
+      // Hata durumunda isteğe bağlı olarak kullanıcıyı bilgilendirebilirsin
+    }
+  }
   Future<bool> deletePortfolioItem(String itemId) async {
     if (_token == null) return false;
     final success = await _apiService.deletePortfolioItem(itemId: itemId);

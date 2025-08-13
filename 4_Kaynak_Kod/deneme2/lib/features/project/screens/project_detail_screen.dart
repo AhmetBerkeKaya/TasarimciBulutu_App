@@ -288,7 +288,30 @@ class ProjectDetailScreen extends StatelessWidget {
       buttonIcon = Icons.rate_review_outlined;
       buttonColor = Colors.amber.shade800;
       onPressed = () async {
-        // ... (Değerlendirme mantığı aynı)
+        // Değerlendirilecek kişiyi (reviewee) dinamik olarak belirle:
+        // Eğer ben proje sahibiysem (isOwner), kabul edilen freelancer'ı değerlendiririm.
+        // Eğer ben freelancer'sam, proje sahibini değerlendiririm.
+        final reviewee = isOwner
+            ? project.acceptedApplication!.freelancer
+            : project.owner;
+
+        // Değerlendirme ekranına yönlendir ve geri dönüldüğünde sonucu bekle
+        final reviewSubmitted = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (context) => SubmitReviewScreen(
+              projectId: project.id,
+              revieweeId: reviewee.id,
+              revieweeName: reviewee.name,
+            ),
+          ),
+        );
+
+        // Eğer submit_review_screen'den `true` değeriyle dönüldüyse (yani başarılıysa),
+        // `hasAlreadyReviewed` durumunu güncellemek için proje verilerini yeniden çek.
+        // Bu, butonun anında kaybolmasını sağlar.
+        if (reviewSubmitted == true && context.mounted) {
+          context.read<ProjectProvider>().fetchMyProjects();
+        }
       };
     }
     // Freelancer başvurduysa ama proje hala açıksa

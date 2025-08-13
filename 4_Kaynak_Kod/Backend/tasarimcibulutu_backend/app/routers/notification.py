@@ -1,53 +1,81 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import List
-from pydantic import UUID4
+# app/routers/notification.py
 
-from app import crud, schemas, database
+from uuid import UUID
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app import crud, models, schemas
+from app.dependencies import get_current_user, get_db
 
 router = APIRouter(
     prefix="/notifications",
-    tags=["notifications"]
+    tags=["notifications"],
+    responses={404: {"description": "Not found"}},
 )
 
-def get_db():
-    db = database.SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
-
-@router.post("/", response_model=schemas.Notification)
-def create_notification(notification: schemas.NotificationCreate, db: Session = Depends(get_db)):
-    return crud.create_notification(db, notification=notification)
-
-
-@router.get("/", response_model=List[schemas.Notification])
-def read_notifications(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    notifications = crud.get_notifications(db, skip=skip, limit=limit)
+@router.get("/", response_model=list[schemas.Notification])
+def read_notifications_for_current_user(
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """
+    Oturum açmış kullanıcının bildirimlerini listeler.
+    En yeniden eskiye doğru sıralıdır.
+    """
+    notifications = crud.notification.get_notifications_by_user(
+        db, user_id=current_user.id, skip=skip, limit=limit
+    )
     return notifications
 
 
-@router.get("/{notification_id}", response_model=schemas.Notification)
-def read_notification(notification_id: UUID4, db: Session = Depends(get_db)):
-    db_notification = crud.get_notification(db, notification_id=notification_id)
-    if not db_notification:
-        raise HTTPException(status_code=404, detail="Notification not found")
-    return db_notification
+@router.get("/unread-count", response_model=schemas.UnreadNotificationCount)
+def get_unread_count(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """
+    Oturum açmış kullanıcının okunmamış bildirim sayısını döndürür.
+    """
+    count = crud.notification.get_unread_notification_count(db, user_id=current_user.id)
+    return {"unread_count": count}
 
 
-@router.put("/{notification_id}", response_model=schemas.Notification)
-def update_notification(notification_id: UUID4, notification_update: schemas.NotificationUpdate, db: Session = Depends(get_db)):
-    updated_notification = crud.update_notification(db, notification_id, notification_update)
-    if not updated_notification:
-        raise HTTPException(status_code=404, detail="Notification not found")
-    return updated_notification
+@router.post("/{notification_id}/read", response_model=schemas.Notification)
+def mark_as_read(
+    notification_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """
+    Belirli bir bildirimi okundu olarak işaretler.
+    Kullanıcılar sadece kendi bildirimlerini işaretleyebilir.
+    """
+    notification = crud.notification.mark_notification_as_read(
+        db, notification_id=notification_id, user_id=current_user.id
+    )
+    if not notification:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found or you do not have permission to access it.",
+        )
+    return notification
 
 
-@router.delete("/{notification_id}", response_model=schemas.Notification)
-def delete_notification(notification_id: UUID4, db: Session = Depends(get_db)):
-    deleted_notification = crud.delete_notification(db, notification_id)
-    if not deleted_notification:
-        raise HTTPException(status_code=404, detail="Notification not found")
-    return deleted_notification
+@router.post("/read-all", response_model=schemas.MarkAllReadResponse)
+def mark_all_as_read(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """
+    Oturum açmış kullanıcının tüm okunmamış bildirimlerini okundu olarak işaretler.
+    """
+    updated_count = crud.notification.mark_all_notifications_as_read(
+        db, user_id=current_user.id
+    )
+    return {
+        "message": "All unread notifications have been marked as read.",
+        "updated_count": updated_count,
+    }

@@ -5,6 +5,8 @@ from typing import List
 from datetime import timezone, datetime
 from app.models.application import ApplicationStatus
 from app.models.project import ProjectStatus
+from app import models, schemas, crud
+from app.models.notification import NotificationType
 
 def get_application(db: Session, application_id: str):
     return db.query(models.Application).filter(models.Application.id == application_id).first()
@@ -21,9 +23,8 @@ def update_application_status(
 ) -> models.Application | None:
     """
     Bir başvurunun durumunu günceller.
-    Eğer başvuru kabul edilirse, projenin durumunu 'IN_PROGRESS' yapar.
+    Durum değişikliğine göre freelancer'a bildirim gönderir.
     """
-    # Başvuruyu ve ilişkili projeyi tek sorguda getir
     application = db.query(models.Application).options(
         joinedload(models.Application.project)
     ).filter(models.Application.id == application_id).first()
@@ -31,15 +32,17 @@ def update_application_status(
     if not application or application.project.user_id != current_user_id:
         return None
     
-    # Başvuru durumunu güncelle
+    # Bilgileri, veritabanı işlemi öncesinde güvenli değişkenlere alalım.
+    project_title = application.project.title
+    freelancer_id = application.freelancer_id
+    project_id = application.project_id
+
+    # Başvurunun ve projenin durumunu güncelle
     application.status = new_status
     
-    # --- DEĞİŞİKLİK BURADA: Karşılaştırmayı .value ile yapıyoruz ---
+    # --- KRİTİK DEĞİŞİKLİK: Enum'ların değerlerini (.value) karşılaştırıyoruz ---
     if new_status.value == ApplicationStatus.accepted.value:
-        # İlgili projenin durumunu 'IN_PROGRESS' yap
         application.project.status = ProjectStatus.IN_PROGRESS.value
-        
-        # Diğer bekleyen başvuruları reddet
         (
             db.query(models.Application)
             .filter(
@@ -53,6 +56,33 @@ def update_application_status(
     db.commit()
     db.refresh(application)
     
+    # --- FREELANCER'A BİLDİRİM GÖNDERME ---
+    try:
+        notification_type = None
+        notification_content = None
+
+        # --- KRİTİK DEĞİŞİKLİK: Enum'ların değerlerini (.value) karşılaştırıyoruz ---
+        if new_status.value == ApplicationStatus.accepted.value:
+            notification_type = NotificationType.APPLICATION_ACCEPTED
+            notification_content = f"Tebrikler! '{project_title}' projesine yaptığınız başvuru kabul edildi."
+        
+        elif new_status.value == ApplicationStatus.rejected.value:
+            notification_type = NotificationType.APPLICATION_REJECTED
+            notification_content = f"'{project_title}' projesine yaptığınız başvuru reddedildi."
+
+        if notification_type and notification_content:
+            crud.notification.create_notification(
+                db=db,
+                user_id=freelancer_id,
+                actor_id=current_user_id,
+                type=notification_type,
+                content=notification_content,
+                related_entity_id=project_id
+            )
+
+    except Exception as e:
+        print(f"Başvuru durumu değişikliği sonrası bildirim oluşturulurken hata oluştu: {e}")
+
     return application
 
 def get_applications_by_project(db: Session, project_id: str) -> List[models.Application]:
@@ -84,6 +114,10 @@ def get_application_by_project_and_freelancer(db: Session, project_id: UUID, fre
     ).first()
 
 def create_application(db: Session, application: schemas.ApplicationCreate, freelancer_id: UUID) -> models.Application:
+    """
+    Yeni bir başvuru oluşturur ve proje sahibine bildirim gönderir.
+    """
+    # 1. Adım: Başvuruyu veritabanına kaydet
     db_application = models.Application(
         project_id=application.project_id,
         freelancer_id=freelancer_id,
@@ -91,11 +125,34 @@ def create_application(db: Session, application: schemas.ApplicationCreate, free
         proposed_budget=application.proposed_budget,
         proposed_duration=application.proposed_duration,
         status=ApplicationStatus.pending,
-        created_at=datetime.now(timezone.utc) # <-- BU SATIRIN MEVCUT OLDUĞUNDAN EMİN OL
+        created_at=datetime.now(timezone.utc)
     )
     db.add(db_application)
     db.commit()
     db.refresh(db_application)
+
+    # 2. Adım: Proje sahibi için bildirim oluştur
+    try:
+        # Gerekli bilgiler için freelancer'ı ve projeyi çek
+        freelancer = db.query(models.User).filter(models.User.id == freelancer_id).first()
+        project = db.query(models.Project).filter(models.Project.id == application.project_id).first()
+
+        if freelancer and project:
+            notification_content = f"{freelancer.name}, '{project.title}' projenize başvurdu."
+            
+            crud.notification.create_notification(
+                db=db,
+                user_id=project.user_id,          # Bildirimi alacak kişi (proje sahibi)
+                actor_id=freelancer_id,           # Eylemi yapan kişi (başvuran freelancer)
+                type=NotificationType.APPLICATION_SUBMITTED,
+                content=notification_content,
+                related_entity_id=project.id      # Tıklayınca projeye gitmesi için
+            )
+    except Exception as e:
+        # Bildirim hatası ana işlemi etkilemesin
+        print(f"Başvuru sonrası bildirim oluşturulurken hata oluştu: {e}")
+
+    # 3. Adım: Oluşturulan başvuru nesnesini döndür
     return db_application
 
 def update_application(db: Session, application_id: str, application_update: schemas.ApplicationUpdate):

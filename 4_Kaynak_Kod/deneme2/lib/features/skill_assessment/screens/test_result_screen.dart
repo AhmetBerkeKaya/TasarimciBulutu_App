@@ -1,6 +1,7 @@
 // lib/features/skill_assessment/screens/test_result_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/skill_test_provider.dart';
 
 class TestResultScreen extends StatelessWidget {
@@ -91,11 +92,17 @@ class TestResultScreen extends StatelessWidget {
 
             const Spacer(),
             ElevatedButton(
-              onPressed: () {
-                // Test akışından tamamen çık ve profil sayfasına veya ana sayfaya dön
-                // clearTestState() metodu provider'daki test verilerini temizler.
+              onPressed: () async { // Fonksiyonu 'async' yapıyoruz
+                // Önce AuthProvider'daki kullanıcı verisini arkaplanda yenile
+                await context.read<AuthProvider>().refreshUserData();
+
+                // Sonra provider'daki mevcut test durumunu temizle
                 provider.clearTestState();
-                Navigator.of(context).popUntil((route) => route.isFirst);
+
+                // Ve en son ana sayfaya dön
+                if (context.mounted) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
               },
               child: const Text('Ana Sayfaya Dön'),
             ),

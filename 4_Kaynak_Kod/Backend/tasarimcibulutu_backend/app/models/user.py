@@ -70,7 +70,19 @@ class User(Base):
     # --- İlişkiler (Değişiklik Yok) ---
     projects = relationship("Project", back_populates="owner")
     applications = relationship("Application", back_populates="freelancer")
-    notifications = relationship("Notification", back_populates="user")
+    # Bu kullanıcının ALDIĞI bildirimler (notifications.user_id üzerinden bağlanır)
+    notifications = relationship(
+        "Notification",
+        foreign_keys="[Notification.user_id]",
+        back_populates="recipient",
+        cascade="all, delete-orphan"
+    )
+    # Bu kullanıcının SEBEP OLDUĞU/TETİKLEDİĞİ bildirimler (notifications.actor_id üzerinden bağlanır)
+    triggered_notifications = relationship(
+        "Notification",
+        foreign_keys="[Notification.actor_id]",
+        back_populates="actor"
+    )
     sent_messages = relationship("Message", back_populates="sender", foreign_keys="Message.sender_id")
     received_messages = relationship("Message", back_populates="receiver", foreign_keys="Message.receiver_id")
     test_results = relationship("TestResult", back_populates="user", cascade="all, delete-orphan")

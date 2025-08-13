@@ -203,6 +203,32 @@ class _ProfileBody extends StatelessWidget {
                         ? const Text('Henüz yetenek eklenmemiş.')
                         : Wrap(spacing: 8.0, runSpacing: 8.0, children: user.skills.map((skill) => Chip(label: Text(skill.name))).toList()),
                   ),
+                  if (isMyProfile) ...[
+                    const SizedBox(height: 16),
+                    _buildSection(
+                      context,
+                      icon: Icons.checklist_rtl_rounded,
+                      title: 'Yetkinlik Testleri',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'Yetkinliklerinizi platform onaylı testler ile kanıtlayarak profilinizi güçlendirin ve projelerde bir adım öne çıkın.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(context).push(MaterialPageRoute(
+                                builder: (context) => const SkillTestListScreen(),
+                              ));
+                            },
+                            child: const Text('Testleri Görüntüle'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   _buildSection(
                     context,
