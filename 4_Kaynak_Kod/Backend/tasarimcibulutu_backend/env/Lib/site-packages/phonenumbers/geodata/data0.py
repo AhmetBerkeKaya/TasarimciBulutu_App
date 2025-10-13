@@ -6948,6 +6948,7 @@ data = {
  '1323971':{'en': 'Los Angeles, CA'},
  '1323980':{'en': 'Los Angeles, CA'},
  '1323982':{'en': 'Los Angeles, CA'},
+ '1324':{'en': 'Florida'},
  '1325':{'en': 'Texas'},
  '1325223':{'en': 'San Angelo, TX'},
  '1325224':{'en': 'San Angelo, TX'},
@@ -10018,5 +10019,4 @@ data = {
  '1414482':{'en': 'Milwaukee, WI'},
  '1414483':{'en': 'Milwaukee, WI'},
  '1414486':{'en': 'Milwaukee, WI'},
- '1414489':{'en': 'Cudahy, WI'},
 }
